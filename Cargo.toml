@@ -1,0 +1,15 @@
+[package]
+name = "pocket-relay-client"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[build-dependencies]
+winres = "0.1"
+
+
+[dependencies]
+iced = { version = "0.5.2", features = ["svg", "image_rs"] }
+reqwest = { version = "0.11.12", features = ["blocking", "json" ] }
+serde = { version = "1.0", features = ["derive"] }
