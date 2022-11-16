@@ -1,16 +1,17 @@
 #![windows_subsystem = "windows"]
 use std::{
     fmt::Display,
-    fs::{read, write},
-    io::ErrorKind,
-    path::Path,
+    fs::{copy, read, remove_file, write},
+    io::{self, ErrorKind},
+    path::{Path, PathBuf},
 };
 
 use iced::{
-    widget::{button, container, svg, Button, Column, Row, Svg, Text, TextInput},
+    widget::{button, container, svg, Button, Column, Row, Scrollable, Svg, Text, TextInput},
     window::{self, Icon},
-    Color, Length, Sandbox, Settings,
+    Color, Length, Padding, Sandbox, Settings,
 };
+use native_dialog::FileDialog;
 use serde::Deserialize;
 
 /// Constant storing the application version
@@ -26,7 +27,11 @@ const LOGO_SVG: &[u8] = include_bytes!("logo.svg");
 /// Window icon bytes
 const ICON_BYTES: &[u8] = include_bytes!("icon.ico");
 /// The window size
-const WINDOW_SIZE: (u32, u32) = (380, 325);
+const WINDOW_SIZE: (u32, u32) = (300, 340);
+
+/// Bytes for the patching DDL files
+const BINKW23_DLL_BYTES: &[u8] = include_bytes!("binkw23.dll");
+const BINKW32_DLL_BYTES: &[u8] = include_bytes!("binkw32.dll");
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -38,6 +43,12 @@ pub enum Message {
     RemoveHostEntry,
     /// Resets the application state
     ResetState,
+    /// Request patching of a game
+    PatchGame,
+    /// Request removal of patch
+    RemovePatch,
+    /// Request help screen
+    ShowHelp,
 }
 
 fn main() -> iced::Result {
@@ -62,7 +73,13 @@ enum AppState {
     /// Hosts file entry removed screen state
     Removed,
     /// Error occurred screen state
-    Error(HostsError),
+    Error(AppError),
+    /// Sucessful patch screen state
+    GamePatched,
+    /// Sucessfully removed patch screen state
+    GamePatchRemoved,
+    /// Help screen state
+    Help,
 }
 
 struct PocketRelay {
@@ -116,6 +133,21 @@ impl Sandbox for PocketRelay {
                     AppState::Removed
                 };
             }
+            Message::PatchGame => {
+                self.state = match try_patch_game() {
+                    Err(err) => AppState::Error(err),
+                    Ok(true) => AppState::GamePatched,
+                    Ok(false) => AppState::Initial,
+                };
+            }
+            Message::RemovePatch => {
+                self.state = match try_remove_patch() {
+                    Err(err) => AppState::Error(err),
+                    Ok(true) => AppState::GamePatchRemoved,
+                    Ok(false) => AppState::Initial,
+                };
+            }
+            Message::ShowHelp => self.state = AppState::Help,
             Message::ResetState => self.state = AppState::Initial,
         }
     }
@@ -124,38 +156,49 @@ impl Sandbox for PocketRelay {
         let logo = Svg::new(svg::Handle::from_memory(LOGO_SVG))
             .width(Length::Fill)
             .height(Length::Units(90));
+
         let version_text = Text::new(format!("Version: {}", APP_VERSION))
-            .size(10)
-            .style(Color::from_rgb(0.4, 0.4, 0.4));
-        let mut content = Column::new().spacing(15).push(logo).push(version_text);
+            .size(15)
+            .style(Color::from_rgb(0.4, 0.4, 0.4))
+            .width(Length::Fill);
+
+        let mut content = Column::new().spacing(15);
 
         match &self.state {
             AppState::Initial => {
-                let host_input = TextInput::new("example.com", &self.host, Message::HostChanged)
+                let text = Text::new("Press 'Help' for usage instructions")
+                    .style(Color::from_rgb(0.75, 0.75, 0.75))
+                    .size(15);
+                let verison_column = Column::new()
+                    .push(version_text)
+                    .push(text)
+                    .width(Length::Fill)
+                    .spacing(2);
+
+                let help_button = Button::new("Help").on_press(Message::ShowHelp);
+
+                let heading_row = Row::new()
+                    .spacing(15)
+                    .align_items(iced::Alignment::Center)
+                    .push(verison_column)
+                    .push(help_button);
+
+                let host_input = TextInput::new("Connection URL", &self.host, Message::HostChanged)
                     .padding(10)
                     .size(20);
 
-                let text = Text::new(
-                    "Enter the connection url for the Pocket Relay server. \
-                        If you are using a domain with a non static IP you will need to press \
-                        update when the address changes",
-                )
-                .width(Length::Fill)
-                .size(15)
-                .style(Color::from_rgb(0.75, 0.75, 0.75));
-
-                content = content.push(host_input).push(text);
+                content = content.push(logo).push(heading_row).push(host_input);
 
                 if self.has_entry {
                     let update_button = Button::new("Update")
                         .on_press(Message::UpdateHostEntry)
                         .width(Length::Fill)
-                        .padding(10);
+                        .padding(5);
 
                     let remove_button = Button::new("Remove")
                         .on_press(Message::RemoveHostEntry)
                         .width(Length::Fill)
-                        .padding(10);
+                        .padding(5);
 
                     let button_row = Row::new()
                         .spacing(15)
@@ -167,13 +210,32 @@ impl Sandbox for PocketRelay {
                     let set_button = Button::new("Set")
                         .on_press(Message::UpdateHostEntry)
                         .width(Length::Fill)
-                        .padding(10);
+                        .padding(5);
 
                     content = content.push(set_button);
                 }
+
+                {
+                    let patch_button = Button::new("Patch Game")
+                        .on_press(Message::PatchGame)
+                        .width(Length::Fill)
+                        .padding(5);
+
+                    let remove_patch_button = Button::new("Remove Patch")
+                        .on_press(Message::RemovePatch)
+                        .width(Length::Fill)
+                        .padding(5);
+
+                    let patch_row = Row::new()
+                        .spacing(15)
+                        .push(patch_button)
+                        .push(remove_patch_button);
+
+                    content = content.push(patch_row);
+                }
             }
             AppState::Updated(value) => {
-                content = content.spacing(10);
+                content = content.push(logo).spacing(10);
                 let title = Text::new("Updated Hosts Entry").size(20);
                 let text = Text::new(
                     "Successfully connected to Pocket Relay server and updated hosts file",
@@ -208,7 +270,7 @@ impl Sandbox for PocketRelay {
                     .width(Length::Fill)
                     .padding(10)
                     .on_press(Message::ResetState);
-                content = content.push(title).push(text).push(ok_button)
+                content = content.push(logo).push(title).push(text).push(ok_button)
             }
 
             AppState::Error(err) => {
@@ -218,7 +280,90 @@ impl Sandbox for PocketRelay {
                     .width(Length::Fill)
                     .padding(10)
                     .on_press(Message::ResetState);
-                content = content.push(title).push(text).push(ok_button)
+                content = content.push(logo).push(title).push(text).push(ok_button)
+            }
+            AppState::GamePatched => {
+                let title = Text::new("Game Patched").size(20);
+                let text = Text::new("Sucessfully patched game").size(15);
+                let ok_button = button("Ok")
+                    .width(Length::Fill)
+                    .padding(10)
+                    .on_press(Message::ResetState);
+                content = content.push(logo).push(title).push(text).push(ok_button)
+            }
+            AppState::GamePatchRemoved => {
+                let title = Text::new("Game Patch Removed").size(20);
+                let text = Text::new("Sucessfully removed patch from game").size(15);
+                let ok_button = button("Ok")
+                    .width(Length::Fill)
+                    .padding(10)
+                    .on_press(Message::ResetState);
+                content = content.push(logo).push(title).push(text).push(ok_button)
+            }
+            AppState::Help => {
+                {
+                    let text = Text::new("Press 'Back' to go back")
+                        .style(Color::from_rgb(0.75, 0.75, 0.75))
+                        .size(15);
+                    let verison_column = Column::new()
+                        .push(version_text)
+                        .push(text)
+                        .width(Length::Fill)
+                        .spacing(2);
+
+                    let back_button = Button::new("Back").on_press(Message::ResetState);
+                    let heading_row = Row::new()
+                        .spacing(15)
+                        .align_items(iced::Alignment::Center)
+                        .push(verison_column)
+                        .push(back_button);
+                    content = content.push(heading_row);
+                }
+                let mut help_content = Column::new().spacing(15).padding(Padding {
+                    right: 15,
+                    bottom: 0,
+                    left: 0,
+                    top: 0,
+                });
+
+                {
+                    let title = Text::new("1) Connection URLs").size(20);
+                    let text = Text::new(
+                        "This is the url used to connect to the Pocket Relay server this is \
+                        the IP address or domain of the server / computer running the server. \
+                        if you are using a port other than 80 for the HTTP server then you will \
+                        need to include the port \n\
+                        \n\
+                        > If you aren't using a custom port for\n\
+                        IP Example: 127.0.0.1\n\
+                        Domain Example: example.com\n\
+                        > With a custom port of 3368\n\
+                        IP Example: 127.0.0.1:3368\n\
+                        Domain Example: example.com:3368\n\
+                        ",
+                    )
+                    .style(Color::from_rgb(0.75, 0.75, 0.75))
+                    .size(15);
+
+                    help_content = help_content.push(title).push(text)
+                }
+
+                {
+                    let title = Text::new("2) Patching Game").size(20);
+                    let text = Text::new(
+                        "In order for this client tool to work you MUST press the Patch Game button \
+                        if you don't press the patch game button then you will fail to connect to the server \
+                        this patch is not a perminent patch and you can remove it with the 'Remove Patch' button. \
+                        When patching the game navigate to your game directory and select Binaries/Win32/MassEffect3.exe",
+                    )
+                    .style(Color::from_rgb(0.75, 0.75, 0.75))
+                    .size(15);
+
+                    help_content = help_content.push(title).push(text)
+                }
+
+                let scrollable = Scrollable::new(help_content);
+                content = content.push(scrollable)
             }
         }
 
@@ -236,7 +381,7 @@ impl Sandbox for PocketRelay {
 }
 
 #[derive(Debug)]
-enum HostsError {
+enum AppError {
     /// The user provided a empty or invalid host url
     InvalidHost,
     /// The hosts file was missing
@@ -252,49 +397,136 @@ enum HostsError {
     /// Got an invalid response from the server its possible the server is
     /// not a Pocket Relay server
     InvalidResponse,
+    /// Failed to pick a file from the file system
+    PickFileFailed,
+    /// Tried to patch the game but the game file was missing
+    PatchMissingGame,
+
+    /// Failed to delete the binkw32.dll patch file
+    FailedDeletePatch(io::Error),
+    /// Failed to replace the patched blinkw32.dll file with the original
+    FailedReplaceOriginal(io::Error),
+
+    /// Failed while writing patch files
+    FailedWritingPatchFiles(io::Error),
 }
 
-impl Display for HostsError {
+impl Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            HostsError::InvalidHost => "Provided host url is invalid try another",
-            HostsError::FileMissing => "System hosts file was missing",
-            HostsError::ReadFailure => "Unable to read contents of system hosts file",
-            HostsError::WriteFailure => "Unable to write contents of system hosts file",
-            HostsError::PermissionsError => "Missing permissions to access hosts file. Make sure this program is running as administrator",
-            HostsError::ConnectionFailed => "Failed to connect to Pocket Relay server. Check the address you provided is correct.",
-            HostsError::InvalidResponse => "Server responded with an unexpected response. Check the address and port you provided is correct."
+            AppError::InvalidHost => "Provided host url is invalid try another",
+            AppError::FileMissing => "System hosts file was missing",
+            AppError::ReadFailure => "Unable to read contents of system hosts file",
+            AppError::WriteFailure => "Unable to write contents of system hosts file",
+            AppError::PermissionsError => "Missing permissions to access hosts file. Make sure this program is running as administrator",
+            AppError::ConnectionFailed => "Failed to connect to Pocket Relay server. Check the address you provided is correct.",
+            AppError::InvalidResponse => "Server responded with an unexpected response. Check the address and port you provided is correct.",
+            AppError::PickFileFailed => "Failed to get picked file. Make sure this program is running as administrator",
+            AppError::PatchMissingGame => "The path given doesn't contains the MassEffect.exe executable",
+            AppError::FailedDeletePatch(err) => {
+                write!(f, "Failed to delete binkw32.dll you will have to manually unpatch your game: {err:?}")?;
+                return Ok(());
+            },
+            AppError::FailedReplaceOriginal(err) => {
+                write!(f, "Failed to replace binkw32.dll with origin binkw23.ddl: {err:?}")?;
+                return Ok(());
+            }
+            AppError::FailedWritingPatchFiles(err) => {
+                write!(f, "Failed to write patch file dlls (binkw32.dll and binkw32.dll): {err:?}")?;
+                return Ok(());
+            }
         })
     }
 }
 
+/// Attempt to use the system file picker to pick the path to the
+/// Mass Effect 3 executable
+fn try_pick_game_path() -> Result<Option<PathBuf>, AppError> {
+    FileDialog::new()
+        .set_filename("MassEffect3.exe")
+        .add_filter("Mass Effect 3 Executable", &["exe"])
+        .show_open_single_file()
+        .map_err(|_| AppError::PickFileFailed)
+}
+
+/// Attempts to remove the patch from the provided Mass Effect
+/// installation by swapping the binkw32 ddl with binkw23 and
+/// deleting the old DLL
+fn try_remove_patch() -> Result<bool, AppError> {
+    let path = match try_pick_game_path()? {
+        Some(value) => value,
+        None => return Ok(false),
+    };
+    if !path.exists() {
+        return Err(AppError::PatchMissingGame);
+    }
+
+    let parent = path.parent().ok_or(AppError::PatchMissingGame)?;
+
+    let binkw23 = parent.join("binkw23.dll");
+    let binkw32 = parent.join("binkw32.dll");
+
+    if binkw32.exists() {
+        remove_file(&binkw32).map_err(|err| AppError::FailedDeletePatch(err))?;
+    }
+
+    if binkw23.exists() {
+        copy(&binkw23, &binkw32).map_err(|err| AppError::FailedReplaceOriginal(err))?;
+        remove_file(&binkw23).ok();
+    } else {
+        write(&binkw32, BINKW23_DLL_BYTES).map_err(|err| AppError::FailedReplaceOriginal(err))?;
+    }
+
+    Ok(true)
+}
+
+/// Attempts to patch the Mass Effect installation at the provided game
+/// path. Writes the two embedded DLLs to the game directory.
+fn try_patch_game() -> Result<bool, AppError> {
+    let path = match try_pick_game_path()? {
+        Some(value) => value,
+        None => return Ok(false),
+    };
+    if !path.exists() {
+        return Err(AppError::PatchMissingGame);
+    }
+    let parent = path.parent().ok_or(AppError::PatchMissingGame)?;
+
+    let binkw23 = parent.join("binkw23.dll");
+    let binkw32 = parent.join("binkw32.dll");
+
+    write(&binkw23, BINKW23_DLL_BYTES).map_err(|err| AppError::FailedWritingPatchFiles(err))?;
+    write(&binkw32, BINKW32_DLL_BYTES).map_err(|err| AppError::FailedWritingPatchFiles(err))?;
+    Ok(true)
+}
+
 /// Attempts to read the hosts file contents to a string
 /// returning a HostsError if it was unable to do so
-fn read_hosts_file() -> Result<String, HostsError> {
+fn read_hosts_file() -> Result<String, AppError> {
     let path = Path::new(HOSTS_PATH);
     if !path.exists() {
-        return Err(HostsError::FileMissing);
+        return Err(AppError::FileMissing);
     }
     let result = read(path);
     match result {
         Err(err) => Err(if err.kind() == ErrorKind::PermissionDenied {
-            HostsError::PermissionsError
+            AppError::PermissionsError
         } else {
-            HostsError::ReadFailure
+            AppError::ReadFailure
         }),
-        Ok(bytes) => String::from_utf8(bytes).map_err(|_| HostsError::ReadFailure),
+        Ok(bytes) => String::from_utf8(bytes).map_err(|_| AppError::ReadFailure),
     }
 }
 
 /// Attempts to write the hosts file contents from a string
 /// returning a HostsError if it was unable to do so
-fn write_hosts_file(value: &str) -> Result<(), HostsError> {
+fn write_hosts_file(value: &str) -> Result<(), AppError> {
     let path = Path::new(HOSTS_PATH);
     write(path, value).map_err(|err| {
         if err.kind() == ErrorKind::PermissionDenied {
-            HostsError::PermissionsError
+            AppError::PermissionsError
         } else {
-            HostsError::WriteFailure
+            AppError::WriteFailure
         }
     })
 }
@@ -323,7 +555,7 @@ struct LookupData {
 /// considered valid.
 ///
 /// `host` The host to try and lookup
-fn try_lookup_host(host: &str) -> Result<LookupData, HostsError> {
+fn try_lookup_host(host: &str) -> Result<LookupData, AppError> {
     let mut url = String::new();
 
     if !host.starts_with("http://") && !host.starts_with("https://") {
@@ -339,12 +571,12 @@ fn try_lookup_host(host: &str) -> Result<LookupData, HostsError> {
 
     url.push_str("api/server");
 
-    let response = reqwest::blocking::get(url).map_err(|_| HostsError::ConnectionFailed)?;
-    let address = response.remote_addr().ok_or(HostsError::ConnectionFailed)?;
+    let response = reqwest::blocking::get(url).map_err(|_| AppError::ConnectionFailed)?;
+    let address = response.remote_addr().ok_or(AppError::ConnectionFailed)?;
     let address = format!("{}", address.ip());
     let details = response
         .json::<ServerDetails>()
-        .map_err(|_| HostsError::InvalidResponse)?;
+        .map_err(|_| AppError::InvalidResponse)?;
 
     println!(
         "Server details (Address: {}, Version: {})",
@@ -361,9 +593,9 @@ fn try_lookup_host(host: &str) -> Result<LookupData, HostsError> {
 /// url
 ///
 /// `url` The lookup url for Pocket Relay
-fn set_host_entry(url: &str) -> Result<LookupData, HostsError> {
+fn set_host_entry(url: &str) -> Result<LookupData, AppError> {
     if url.is_empty() {
-        return Err(HostsError::InvalidHost);
+        return Err(AppError::InvalidHost);
     }
 
     let lookup_data = try_lookup_host(url)?;
@@ -485,7 +717,7 @@ fn get_host_entry() -> Option<HostAddr> {
 
 /// Filters all the host redirects removing any for the
 /// gosredirector.ea.com host
-fn remove_host_entry() -> Result<(), HostsError> {
+fn remove_host_entry() -> Result<(), AppError> {
     let contents = read_hosts_file()?;
     let lines = contents
         .lines()
