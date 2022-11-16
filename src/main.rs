@@ -27,7 +27,7 @@ const LOGO_SVG: &[u8] = include_bytes!("logo.svg");
 /// Window icon bytes
 const ICON_BYTES: &[u8] = include_bytes!("icon.ico");
 /// The window size
-const WINDOW_SIZE: (u32, u32) = (300, 340);
+const WINDOW_SIZE: (u32, u32) = (300, 330);
 
 /// Bytes for the patching DDL files
 const BINKW23_DLL_BYTES: &[u8] = include_bytes!("binkw23.dll");
