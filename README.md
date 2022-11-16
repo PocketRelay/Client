@@ -44,11 +44,9 @@ This tool uses the system hosts file at `C:/Windows/System32/drivers/etc/hosts` 
 would normally go to `gosredirector.ea.com` to the host that you provide through the
 connection string 
 
-## 🔌Requirements
+## 🔌 Credits
 
-In order to use this tool your Mass Effect 3 game must be patched with the Blinkw32 proxy DDL
-you can find details about this
-here: [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32)
+This client application embeds the [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) patch DLLs in order to make its redirection work
 
 
 ## 🧾 License
