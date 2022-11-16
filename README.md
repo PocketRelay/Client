@@ -48,6 +48,9 @@ connection string
 
 This client application embeds the [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) patch DLLs in order to make its redirection work
 
+## EA / BioWare Notice
+All code in this repository is authored by Jacobtread and none is taken from BioWare. This code has been 
+produced from studying the protocol of the official servers and emulating its functionality. This program is in no way or form supported, endorsed, or provided by BioWare or Electronic Arts.
 
 ## 🧾 License
 
