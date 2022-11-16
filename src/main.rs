@@ -83,6 +83,8 @@ enum AppState {
 }
 
 struct PocketRelay {
+    logo_handle: svg::Handle,
+    version: String,
     /// Whether the hosts file already contains a entry
     has_entry: bool,
     /// The new host to insert into the hosts file
@@ -101,6 +103,8 @@ impl Sandbox for PocketRelay {
         };
 
         Self {
+            logo_handle: svg::Handle::from_memory(LOGO_SVG),
+            version: format!("Version: {}", APP_VERSION),
             has_entry,
             host,
             state: AppState::Initial,
@@ -153,11 +157,11 @@ impl Sandbox for PocketRelay {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let logo = Svg::new(svg::Handle::from_memory(LOGO_SVG))
+        let logo = Svg::new(self.logo_handle.clone())
             .width(Length::Fill)
             .height(Length::Units(90));
 
-        let version_text = Text::new(format!("Version: {}", APP_VERSION))
+        let version_text = Text::new(&self.version)
             .size(15)
             .style(Color::from_rgb(0.4, 0.4, 0.4))
             .width(Length::Fill);
