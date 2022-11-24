@@ -3,6 +3,11 @@ name = "pocket-relay-client"
 version = "0.1.1"
 edition = "2021"
 build = "build.rs"
+license = "MIT"
+description = "Client application for the Pocket Relay server"
+readme = "README.md"
+authors = ["Jacobtread <jacobtread@gmail.com>"]
+keywords = ["EA", "PocketRelay", "MassEffect"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [build-dependencies]
