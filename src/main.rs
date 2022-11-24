@@ -539,8 +539,6 @@ fn write_hosts_file(value: &str) -> Result<(), AppError> {
 /// that we need the rest are ignored by this client.
 #[derive(Deserialize)]
 struct ServerDetails {
-    /// The external address that the server uses
-    address: String,
     /// The Pocket Relay version of the server
     version: String,
 }
@@ -582,10 +580,7 @@ fn try_lookup_host(host: &str) -> Result<LookupData, AppError> {
         .json::<ServerDetails>()
         .map_err(|_| AppError::InvalidResponse)?;
 
-    println!(
-        "Server details (Address: {}, Version: {})",
-        details.address, details.version
-    );
+    println!("Server details (Version: {})", details.version);
 
     Ok(LookupData {
         address,
