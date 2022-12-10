@@ -471,14 +471,14 @@ fn try_remove_patch() -> Result<bool, AppError> {
     let binkw32 = parent.join("binkw32.dll");
 
     if binkw32.exists() {
-        remove_file(&binkw32).map_err(|err| AppError::FailedDeletePatch(err))?;
+        remove_file(&binkw32).map_err(AppError::FailedDeletePatch)?;
     }
 
     if binkw23.exists() {
-        copy(&binkw23, &binkw32).map_err(|err| AppError::FailedReplaceOriginal(err))?;
+        copy(&binkw23, &binkw32).map_err(AppError::FailedReplaceOriginal)?;
         remove_file(&binkw23).ok();
     } else {
-        write(&binkw32, BINKW23_DLL_BYTES).map_err(|err| AppError::FailedReplaceOriginal(err))?;
+        write(&binkw32, BINKW23_DLL_BYTES).map_err(AppError::FailedReplaceOriginal)?;
     }
 
     Ok(true)
@@ -499,8 +499,8 @@ fn try_patch_game() -> Result<bool, AppError> {
     let binkw23 = parent.join("binkw23.dll");
     let binkw32 = parent.join("binkw32.dll");
 
-    write(&binkw23, BINKW23_DLL_BYTES).map_err(|err| AppError::FailedWritingPatchFiles(err))?;
-    write(&binkw32, BINKW32_DLL_BYTES).map_err(|err| AppError::FailedWritingPatchFiles(err))?;
+    write(&binkw23, BINKW23_DLL_BYTES).map_err(AppError::FailedWritingPatchFiles)?;
+    write(&binkw32, BINKW32_DLL_BYTES).map_err(AppError::FailedWritingPatchFiles)?;
     Ok(true)
 }
 
@@ -567,7 +567,7 @@ fn try_lookup_host(host: &str) -> Result<LookupData, AppError> {
         url.push_str(host);
     }
 
-    if !host.ends_with("/") {
+    if !host.ends_with('/') {
         url.push('/')
     }
 
@@ -635,12 +635,12 @@ struct HostAddr {
 /// `value` The value to filter and map
 fn filter_map_host_line(value: &str) -> Option<HostAddr> {
     let value = value.trim();
-    if value.is_empty() || value.starts_with("#") || !value.contains(HOST) {
+    if value.is_empty() || value.starts_with('#') || !value.contains(HOST) {
         return None;
     }
 
     // Split to the content before any comments
-    let (value, after) = match value.split_once("#") {
+    let (value, after) = match value.split_once('#') {
         Some((before, after)) => (before.trim(), Some(after.trim())),
         None => (value, None),
     };
@@ -679,12 +679,12 @@ fn filter_map_host_line(value: &str) -> Option<HostAddr> {
 /// `value` The line to check
 fn filter_not_host_line(value: &&str) -> bool {
     let value = value.trim();
-    if value.is_empty() || value.starts_with("#") || !value.contains(HOST) {
+    if value.is_empty() || value.starts_with('#') || !value.contains(HOST) {
         return true;
     }
 
     // Split to the content before any comments
-    let value = match value.split_once("#") {
+    let value = match value.split_once('#') {
         Some((before, _)) => before.trim(),
         None => value,
     };
