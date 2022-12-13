@@ -35,7 +35,13 @@ the port is changed to 8080
 test.com:8080
 
 #### Directly use IP address
-127.0.0.1:8080+
+127.0.0.1:8080
+
+## 📷 Screenshots
+
+![Image 1](pictures/1.png)
+![Image 2](pictures/2.png)
+
 
 ## ❔How
 
