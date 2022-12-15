@@ -8,6 +8,10 @@ This is a tool for Redirecting your local Mass Effect 3 clients to an Unofficial
 connection string you put in will be connected to by the client and then used to redirect
 traffic using the system hosts file
 
+## ❔Usage Guide
+
+For a guide on using this program see the guide [Here](https://github.com/PocketRelay/.github/blob/main/manual/SETUP_CLIENT.md)
+
 ## Connection strings
 
 These are the urls you place in the tool. This url is an HTTP url to the HTTP server running on
