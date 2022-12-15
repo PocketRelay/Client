@@ -1,11 +1,4 @@
 #![windows_subsystem = "windows"]
-use std::{
-    fmt::Display,
-    fs::{copy, read, remove_file, write},
-    io::{self, ErrorKind},
-    path::{Path, PathBuf},
-};
-
 use iced::{
     widget::{button, container, svg, Button, Column, Row, Scrollable, Svg, Text, TextInput},
     window::{self, Icon},
@@ -13,6 +6,12 @@ use iced::{
 };
 use native_dialog::FileDialog;
 use serde::Deserialize;
+use std::{
+    fmt::Display,
+    fs::{copy, read, remove_file, write},
+    io::{self, ErrorKind},
+    path::{Path, PathBuf},
+};
 
 /// Constant storing the application version
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
