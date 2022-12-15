@@ -2197,7 +2197,7 @@ dependencies = [
 
 [[package]]
 name = "pocket-relay-client"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "iced",
  "native-dialog",
