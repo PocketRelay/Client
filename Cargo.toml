@@ -9,15 +9,13 @@ readme = "README.md"
 authors = ["Jacobtread <jacobtread@gmail.com>"]
 keywords = ["EA", "PocketRelay", "MassEffect"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [build-dependencies]
 winres = "0.1"
 
-
 [dependencies]
 # Serialization and HTTP requests
-reqwest = { version = "0.11.12", features = ["blocking", "json" ] }
-serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.11", features = ["blocking", "json" ] }
+serde = { version = "1", features = ["derive"] }
 
 # Native file picker dialog
 native-dialog = "0.6.3"
@@ -30,6 +28,6 @@ panic = "abort"
 
 # GUI
 [dependencies.iced]
-version = "0.5.2"
+version = "0.6"
 default-features = false
 features = ["svg", "image_rs", "glow"]
