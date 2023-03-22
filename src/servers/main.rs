@@ -45,10 +45,8 @@ const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
 const BUFFER_SIZE: usize = 4096;
 
 async fn handle_blaze(client: TcpStream) {
-    // Read the target server
-    let target = &*TARGET.read().await;
-    let target = match target {
-        Some(value) => value,
+    let target = match &*TARGET.read().await {
+        Some(value) => value.clone(),
         None => return,
     };
 
