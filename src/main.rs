@@ -4,9 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use constants::{
-    BINKW23_DLL_BYTES, BINKW32_DLL_BYTES, HOSTS_PATH, HOST_KEY, HOST_VALUE, ICON_BYTES, WINDOW_SIZE,
-};
+use constants::*;
 use iced::{
     executor,
     widget::{button, column, container, row, text, text_input, Column},
@@ -16,7 +14,7 @@ use iced::{
 use native_dialog::{FileDialog, MessageDialog};
 use serde::Deserialize;
 use thiserror::Error;
-use tokio::{join, sync::RwLock};
+use tokio::sync::RwLock;
 
 use std::fs::{copy, read, remove_file, write};
 
@@ -30,17 +28,11 @@ mod servers;
 
 #[tokio::main]
 async fn main() -> iced::Result {
+    // Add the hosts file entry
     let _ = set_host_entry();
 
     // Start the servers
-    tokio::spawn(async move {
-        join!(
-            servers::main::start_server(),
-            servers::qos::start_server(),
-            servers::redirector::start_server(),
-            servers::telemetry::start_server()
-        )
-    });
+    tokio::spawn(servers::start());
 
     App::run(Settings {
         window: window::Settings {
@@ -135,7 +127,7 @@ impl Application for App {
             }
             AppMessage::PatchGame => {
                 match try_patch_game() {
-                    Ok(true) => show_confirm("Game patched", "Sucessfully patched game"),
+                    Ok(true) => show_info("Game patched", "Sucessfully patched game"),
                     Ok(false) => {}
                     Err(err) => show_error("Failed to patch game", &err.to_string()),
                 }
@@ -143,7 +135,7 @@ impl Application for App {
             }
             AppMessage::RemovePatch => {
                 match try_remove_patch() {
-                    Ok(true) => show_confirm("Patch removed", "Sucessfully removed patch"),
+                    Ok(true) => show_info("Patch removed", "Sucessfully removed patch"),
                     Ok(false) => {}
                     Err(err) => show_error("Failed to remove patch", &err.to_string()),
                 }
@@ -464,7 +456,7 @@ fn try_pick_game_path() -> Result<Option<PathBuf>, PatchError> {
         .map_err(|_| PatchError::PickFileFailed)
 }
 
-fn show_confirm(title: &str, text: &str) {
+pub fn show_info(title: &str, text: &str) {
     MessageDialog::new()
         .set_title(&title)
         .set_text(&text)
@@ -473,7 +465,7 @@ fn show_confirm(title: &str, text: &str) {
         .unwrap()
 }
 
-fn show_error(title: &str, text: &str) {
+pub fn show_error(title: &str, text: &str) {
     MessageDialog::new()
         .set_title(&title)
         .set_text(&text)

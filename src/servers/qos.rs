@@ -1,19 +1,19 @@
-use crate::{constants::QOS_PORT, net::public_address};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use crate::{constants::QOS_PORT, net::public_address, show_error};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    process::exit,
+};
 use tokio::net::UdpSocket;
 
 /// Starts the Quality Of Service server which handles providing the public
 /// address values to the clients that connect.
 pub async fn start_server() {
-    let socket = {
-        match UdpSocket::bind(("0.0.0.0", QOS_PORT)).await {
-            Ok(value) => {
-                println!("Started QOS server (Port: {})", QOS_PORT);
-                value
-            }
-            Err(_) => {
-                panic!("Failed to bind  server (Port: {})", QOS_PORT)
-            }
+    let socket = match UdpSocket::bind((Ipv4Addr::UNSPECIFIED, QOS_PORT)).await {
+        Ok(value) => value,
+        Err(err) => {
+            let text = format!("Failed to start qos: {}", err);
+            show_error("Failed to start", &text);
+            exit(1);
         }
     };
 
@@ -25,16 +25,12 @@ pub async fn start_server() {
     loop {
         let (_, addr) = match socket.recv_from(&mut buffer).await {
             Ok(value) => value,
-            Err(err) => {
-                panic!("Error while recieving QOS message: {:?}", err);
-            }
+            Err(_) => continue,
         };
 
         let address = match get_address(&addr).await {
             Some(value) => value,
-            None => {
-                panic!("Client address was unable to be found");
-            }
+            None => continue,
         };
 
         let port = addr.port().to_be_bytes();
@@ -53,12 +49,7 @@ pub async fn start_server() {
         output[26..].copy_from_slice(&[0, 0, 0, 0]);
 
         // Send output response
-        match socket.send_to(&output, addr).await {
-            Ok(_) => {}
-            Err(err) => {
-                panic!("Unable to send response to QOS request: {:?}", err);
-            }
-        }
+        let _ = socket.send_to(&output, addr).await;
     }
 }
 

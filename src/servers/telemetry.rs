@@ -1,21 +1,19 @@
-use std::io;
+use crate::{constants::TELEMETRY_PORT, show_error};
+use std::{io, net::Ipv4Addr, process::exit};
 use tokio::{
     io::AsyncReadExt,
     net::{TcpListener, TcpStream},
 };
 
-use crate::constants::TELEMETRY_PORT;
-
 pub async fn start_server() {
     // Initializing the underlying TCP listener
     let listener = {
-        match TcpListener::bind(("0.0.0.0", TELEMETRY_PORT)).await {
-            Ok(value) => {
-                println!("Started Telemetry server (Port: {})", TELEMETRY_PORT);
-                value
-            }
-            Err(_) => {
-                panic!("Failed to bind  server (Port: {})", TELEMETRY_PORT)
+        match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
+            Ok(value) => value,
+            Err(err) => {
+                let text = format!("Failed to start telemetry: {}", err);
+                show_error("Failed to start", &text);
+                exit(1);
             }
         }
     };
@@ -24,16 +22,14 @@ pub async fn start_server() {
     loop {
         let stream: TcpStream = match listener.accept().await {
             Ok((stream, _)) => stream,
-            Err(err) => {
-                panic!("Failed to accept telemetry connection: {err:?}");
-            }
+            Err(_) => continue,
         };
 
         tokio::spawn(async move {
             let mut stream = stream;
             while let Ok(message) = read_message(&mut stream).await {
                 let _message: TelemetryMessage = decode_message(message);
-                // TODO BATCH THEN SEND TELEMETRY MESSAGES TO SERVER ENDPOINT
+                // TODO: Batch these telemetry messages and send them to the server
             }
         });
     }

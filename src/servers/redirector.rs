@@ -2,25 +2,23 @@ use crate::{
     components::{Components, Redirector},
     constants::{MAIN_PORT, REDIRECTOR_PORT},
     models::{InstanceDetails, InstanceNet, NetAddress},
+    show_error,
 };
 use blaze_pk::packet::{Packet, PacketCodec, PacketComponents};
 use blaze_ssl_async::{BlazeAccept, BlazeListener};
 use futures::{SinkExt, StreamExt};
-use std::{io, net::Ipv4Addr, time::Duration};
+use std::{io, net::Ipv4Addr, process::exit, time::Duration};
 use tokio::{select, time::sleep};
 use tokio_util::codec::Framed;
 
 pub async fn start_server() {
     // Initializing the underlying TCP listener
-    let listener = {
-        match BlazeListener::bind(("0.0.0.0", REDIRECTOR_PORT)).await {
-            Ok(value) => {
-                println!("Started Redirector server (Port: {})", REDIRECTOR_PORT);
-                value
-            }
-            Err(_) => {
-                panic!("Failed to bind  server (Port: {})", REDIRECTOR_PORT)
-            }
+    let listener = match BlazeListener::bind((Ipv4Addr::UNSPECIFIED, REDIRECTOR_PORT)).await {
+        Ok(value) => value,
+        Err(err) => {
+            let text = format!("Failed to start redirector: {}", err);
+            show_error("Failed to start", &text);
+            exit(1);
         }
     };
 
@@ -28,14 +26,10 @@ pub async fn start_server() {
     loop {
         let accept = match listener.accept().await {
             Ok(value) => value,
-            Err(err) => {
-                panic!("Failed to accept redirector connection: {err:?}");
-            }
+            Err(_) => break,
         };
         tokio::spawn(async move {
-            if let Err(err) = handle_client(accept).await {
-                panic!("Unable to handle redirect: {err}");
-            };
+            let _ = handle_client(accept).await;
         });
     }
 }
@@ -52,9 +46,7 @@ static DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 async fn handle_client(accept: BlazeAccept) -> io::Result<()> {
     let (stream, addr) = match accept.finish_accept().await {
         Ok(value) => value,
-        Err(_) => {
-            panic!("Unable to establish SSL connection within redirector");
-        }
+        Err(_) => return Ok(()),
     };
 
     let mut framed = Framed::new(stream, PacketCodec);
