@@ -37,6 +37,8 @@ pub async fn start_server() {
 
 /// Header for the Pocket Relay connection scheme used by the client
 const HEADER_SCHEME: &str = "X-Pocket-Relay-Scheme";
+/// Header for the Pocket Relay connection port used by the client
+const HEADER_PORT: &str = "X-Pocket-Relay-Port";
 /// Header for the Pocket Relay connection host used by the client
 const HEADER_HOST: &str = "X-Pocket-Relay-Host";
 /// Endpoint for upgrading the server connection
@@ -66,6 +68,9 @@ async fn handle_blaze(client: TcpStream) {
     if let Ok(scheme_value) = HeaderValue::from_str(&target.scheme) {
         headers.insert(HEADER_SCHEME, scheme_value);
     }
+
+    // Append the port header
+    headers.insert(HEADER_PORT, HeaderValue::from(target.port));
 
     // Append the host header
     if let Ok(host_value) = HeaderValue::from_str(&target.host) {

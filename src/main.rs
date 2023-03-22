@@ -375,6 +375,7 @@ pub struct LookupData {
     scheme: String,
     host: String,
     version: String,
+    port: u16,
 }
 
 #[derive(Debug, Error)]
@@ -415,6 +416,8 @@ async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
 
     let url = response.url();
     let scheme = url.scheme().to_string();
+
+    let port = url.port_or_known_default().unwrap_or(80);
     let host = match url.host() {
         Some(value) => value.to_string(),
         None => return Err(LookupError::InvalidHostTarget),
@@ -428,6 +431,7 @@ async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
     Ok(LookupData {
         scheme,
         host,
+        port,
         version: details.version,
     })
 }
