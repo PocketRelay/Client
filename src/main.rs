@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 use std::{
     io::{self, ErrorKind},
     path::{Path, PathBuf},
@@ -126,8 +127,8 @@ impl Application for App {
                             *write = Some(value.clone());
                             LookupResult::Success(value)
                         }
-                        Err(err) => LookupResult::Error(err.to_string()),
-                        _ => LookupResult::Error("Failed to handle request".to_string()),
+                        Ok(Err(err)) => LookupResult::Error(err.to_string()),
+                        Err(_) => LookupResult::Error("Failed to handle request".to_string()),
                     };
                     AppMessage::LookupResult(result)
                 })
@@ -171,14 +172,13 @@ impl Application for App {
 
 impl App {
     fn view_loading(&self) -> iced::Element<'_, AppMessage> {
-        let mut content = Column::new().spacing(15);
-        let notice = text("Loading");
-        content = content.push(notice);
-        container(content)
+        let notice = text("Loading...");
+        container(notice)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
             .center_x()
+            .center_y()
             .into()
     }
 
@@ -200,8 +200,8 @@ impl App {
 
             if let LookupResult::Success(lookup_data) = &self.lookup_result {
                 let details = text(format!(
-                    "Connected to Pocket Relay server at {} version v{}",
-                    lookup_data.host, lookup_data.version
+                    "Connected: {} {} version v{}",
+                    lookup_data.scheme, lookup_data.host, lookup_data.version
                 ));
                 column = column.push(details);
             } else if let LookupResult::Error(error) = &self.lookup_result {
