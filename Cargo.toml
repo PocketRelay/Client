@@ -14,20 +14,41 @@ winres = "0.1"
 
 [dependencies]
 # Serialization and HTTP requests
-reqwest = { version = "0.11", features = ["blocking", "json" ] }
+reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1", features = ["derive"] }
+
+# Blaze packet system 
+blaze-pk = "1"
+# Blaze SSLv3 async TCPStream implementation
+blaze-ssl-async = "^0.3"
 
 # Native file picker dialog
 native-dialog = "0.6.3"
+
+# Library for obtaining the local IP address of the device
+local-ip-address = "0.5"
+
+tokio-util = { version = "0.7", features = ["codec"] }
+
+futures = "0.3"
+thiserror = "1"
+
+# Tokio async runtime
+[dependencies.tokio]
+version = "1"
+features = ["full"]
+
+# GUI
+[dependencies.iced]
+version = "0.8"
+default-features = false
+features = ["svg", "image_rs", "glow"]
+
+[patch.crates-io]
+local-ip-address = { git = "https://github.com/jacobtread/local-ip-address.git" }
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
-
-# GUI
-[dependencies.iced]
-version = "0.6"
-default-features = false
-features = ["svg", "image_rs", "glow"]
