@@ -8,43 +8,10 @@ This is a tool for Redirecting your local Mass Effect 3 clients to an Unofficial
 connection string you put in will be connected to by the client and then used to redirect
 traffic using the system hosts file
 
+
 ## ❔Usage Guide
 
-For a guide on using this program see the guide [Here](https://github.com/PocketRelay/.github/blob/main/manual/SETUP_CLIENT.md)
-
-## Connection strings
-
-These are the urls you place in the tool. This url is an HTTP url to the HTTP server running on
-the Pocket Relay server. You can ommit the http:// when making the request. Make sure if you 
-are a server owner who has changed the port that you include the port in the conneciton string
-
-### Example With Default Port
-
-#### Domain
-test.com
-
-> Note: When using domains if the IP changes the client tool will need to be used again
-> to update the IP address as the IP address is only resolved at the initial update. This
-> is a limitation of the Hosts file
-
-#### Directly use IP address
-127.0.0.1
-
-### Example With Custom Port
-
-These examples are for if you are using a custom port for this example
-the port is changed to 8080
-
-#### Domain
-test.com:8080
-
-#### Directly use IP address
-127.0.0.1:8080
-
-## 📷 Screenshots
-
-![Image 1](pictures/1.png)
-![Image 2](pictures/2.png)
+For a guide on using this program see the guide [Here](https://pocket-relay.pages.dev/guide/client/windows/)
 
 
 ## ❔How
@@ -59,6 +26,7 @@ connection string
 This client application embeds the [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) patch DLLs in order to make its redirection work
 
 ## EA / BioWare Notice
+
 All code in this repository is authored by Jacobtread and none is taken from BioWare. This code has been 
 produced from studying the protocol of the official servers and emulating its functionality. This program is in no way or form supported, endorsed, or provided by BioWare or Electronic Arts.
 

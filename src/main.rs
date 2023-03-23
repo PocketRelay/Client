@@ -1,9 +1,5 @@
 #![windows_subsystem = "windows"]
-use std::{
-    io::{self, ErrorKind},
-    path::{Path, PathBuf},
-};
-
+use crate::constants::APP_VERSION;
 use constants::*;
 use iced::{
     executor,
@@ -13,17 +9,15 @@ use iced::{
 };
 use native_dialog::{FileDialog, MessageDialog};
 use serde::Deserialize;
+use std::fs::{copy, read, remove_file, write};
+use std::{
+    io::{self, ErrorKind},
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use std::fs::{copy, read, remove_file, write};
-
-use crate::constants::APP_VERSION;
-
-mod components;
 mod constants;
-mod models;
-mod net;
 mod servers;
 
 #[tokio::main]
