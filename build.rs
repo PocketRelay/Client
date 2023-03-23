@@ -1,20 +1,8 @@
 fn main() {
     if cfg!(target_os = "windows") && !cfg!(debug_assertions) {
         let mut res = winres::WindowsResource::new();
-        res.set_manifest(
-            r#"
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-    <security>
-        <requestedPrivileges>
-            <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
-        </requestedPrivileges>
-    </security>
-</trustInfo>
-</assembly>
-"#,
-        );
-        res.set_icon("src/icon.ico");
+        res.set_manifest(include_str!("./Manifest.xml"));
+        res.set_icon("src/resources/assets/icon.ico");
         res.compile().unwrap();
     }
 }
