@@ -9,7 +9,7 @@ use blaze_pk::{
     PacketComponent, PacketComponents,
 };
 use blaze_ssl_async::{BlazeAccept, BlazeListener};
-use futures::{SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use std::{io, net::Ipv4Addr, process::exit, time::Duration};
 use tokio::{select, time::sleep};
 use tokio_util::codec::Framed;
