@@ -7,14 +7,12 @@ use tokio::{
 
 pub async fn start_server() {
     // Initializing the underlying TCP listener
-    let listener = {
-        match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
-            Ok(value) => value,
-            Err(err) => {
-                let text = format!("Failed to start telemetry: {}", err);
-                show_error("Failed to start", &text);
-                exit(1);
-            }
+    let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
+        Ok(value) => value,
+        Err(err) => {
+            let text = format!("Failed to start telemetry: {}", err);
+            show_error("Failed to start", &text);
+            exit(1);
         }
     };
 

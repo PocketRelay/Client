@@ -44,7 +44,7 @@ const HEADER_HOST: &str = "X-Pocket-Relay-Host";
 /// Endpoint for upgrading the server connection
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
 /// The size of the buffers used for proxying data
-const BUFFER_SIZE: usize = 4096;
+const BUFFER_SIZE: usize = 1024 * 8 /* 8kB buffers */;
 
 async fn handle_blaze(client: TcpStream) {
     let target = match &*TARGET.read().await {
