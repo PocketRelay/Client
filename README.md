@@ -11,7 +11,7 @@ traffic using the system hosts file
 
 ## ❔Usage Guide
 
-For a guide on using this program see the guide [Here](https://pocket-relay.pages.dev/guide/client/windows/)
+For a guide on using this program see the guide [Here](https://pocket-relay.pages.dev/guide/client/)
 
 
 ## ❔How
