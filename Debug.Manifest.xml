@@ -6,13 +6,6 @@
     name="app"
     type="win32"
 />
-<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-    <security>
-        <requestedPrivileges>
-            <requestedExecutionLevel level="requireAdministrator" uiAccess="true" />
-        </requestedPrivileges>
-    </security>
-</trustInfo>
 <dependency>
     <dependentAssembly>
         <assemblyIdentity

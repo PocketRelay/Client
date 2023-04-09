@@ -11,7 +11,7 @@ pub const HOSTS_PATH: &str = "C:/Windows/System32/drivers/etc/hosts";
 /// Window icon bytes
 pub const ICON_BYTES: &[u8] = include_bytes!("resources/assets/icon.ico");
 /// The window size
-pub const WINDOW_SIZE: (u32, u32) = (500, 300);
+pub const WINDOW_SIZE: (i32, i32) = (500, 300);
 
 /// Bytes of the origin binkw32.dll
 pub const BINKW23_DLL_BYTES: &[u8] = include_bytes!("resources/binkw23.dll");

@@ -24,14 +24,16 @@ blaze-ssl-async = "^0.3"
 
 # Native file picker dialog
 native-dialog = "0.6.3"
+native-windows-gui = "1.0.13"
 
 # Library for obtaining the local IP address of the device
 local-ip-address = "0.5"
 
 tokio-util = { version = "0.7", features = ["codec"] }
 
-futures-util = "0.3"
+futures-util = { version = "0.3", features = ["sink"] }
 thiserror = "1"
+pollster = "0.3.0"
 
 
 # Tokio async runtime
@@ -39,11 +41,6 @@ thiserror = "1"
 version = "1"
 features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync"]
 
-# GUI
-[dependencies.iced]
-version = "0.8"
-default-features = false
-features = ["image_rs", "glow"]
 
 [patch.crates-io]
 local-ip-address = { git = "https://github.com/jacobtread/local-ip-address.git" }
