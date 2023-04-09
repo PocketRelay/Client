@@ -43,7 +43,7 @@ features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync"]
 [dependencies.iced]
 version = "0.8"
 default-features = false
-features = ["svg", "image_rs", "glow"]
+features = ["image_rs", "glow"]
 
 [patch.crates-io]
 local-ip-address = { git = "https://github.com/jacobtread/local-ip-address.git" }
