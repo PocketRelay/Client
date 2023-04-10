@@ -1,20 +1,22 @@
-use crate::{constants::TELEMETRY_PORT, show_error};
+use crate::{constants::TELEMETRY_PORT, show_error, TARGET};
+use reqwest::Client;
+use serde::Serialize;
 use std::{io, net::Ipv4Addr, process::exit};
 use tokio::{
     io::AsyncReadExt,
     net::{TcpListener, TcpStream},
 };
 
+const TELEMETRY_ENDPOINT: &str = "/api/server/telemetry";
+
 pub async fn start_server() {
     // Initializing the underlying TCP listener
-    let listener = {
-        match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
-            Ok(value) => value,
-            Err(err) => {
-                let text = format!("Failed to start telemetry: {}", err);
-                show_error("Failed to start", &text);
-                exit(1);
-            }
+    let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
+        Ok(value) => value,
+        Err(err) => {
+            let text = format!("Failed to start telemetry: {}", err);
+            show_error("Failed to start", &text);
+            exit(1);
         }
     };
 
@@ -26,10 +28,25 @@ pub async fn start_server() {
         };
 
         tokio::spawn(async move {
+            let target = match &*TARGET.read().await {
+                Some(value) => value.clone(),
+                None => return,
+            };
+
+            // Create the telemetry URL
+            let mut url = String::new();
+            url.push_str(&target.scheme);
+            url.push_str("://");
+            url.push_str(&target.host);
+            url.push_str(TELEMETRY_ENDPOINT);
+
+            let client = Client::new();
+
             let mut stream = stream;
             while let Ok(message) = read_message(&mut stream).await {
-                let _message: TelemetryMessage = decode_message(message);
+                let message: TelemetryMessage = decode_message(message);
                 // TODO: Batch these telemetry messages and send them to the server
+                let _ = client.post(&url).json(&message).send().await;
             }
         });
     }
@@ -59,7 +76,7 @@ async fn read_message(stream: &mut TcpStream) -> io::Result<Vec<u8>> {
 }
 
 // Structure containing key value pairs for telemetry messages
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct TelemetryMessage {
     // Vec of key values
     pub values: Vec<(String, String)>,

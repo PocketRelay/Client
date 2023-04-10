@@ -1,12 +1,6 @@
 #![windows_subsystem = "windows"]
-use crate::constants::APP_VERSION;
+
 use constants::*;
-use iced::{
-    executor,
-    widget::{button, column, container, row, text, text_input, Column},
-    window::{self, Icon},
-    Application, Color, Command, Length, Settings, Theme,
-};
 use native_dialog::{FileDialog, MessageDialog};
 use serde::Deserialize;
 use std::fs::{copy, read, remove_file, write};
@@ -19,224 +13,34 @@ use tokio::sync::RwLock;
 
 mod constants;
 mod servers;
+mod ui;
 
-#[tokio::main]
-async fn main() -> iced::Result {
+fn main() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed building the Runtime");
+
     // Add the hosts file entry
     let _ = set_host_entry();
 
     // Start the servers
-    tokio::spawn(servers::start());
+    runtime.spawn(servers::start());
 
-    App::run(Settings {
-        window: window::Settings {
-            icon: Icon::from_file_data(ICON_BYTES, None).ok(),
-            size: WINDOW_SIZE,
-            resizable: false,
+    #[cfg(feature = "native")]
+    {
+        // Native UI variant
+        ui::native::init(runtime);
+    }
 
-            ..window::Settings::default()
-        },
-
-        ..Settings::default()
-    })
-}
-
-struct App {
-    lookup_result: LookupResult,
-    target: String,
+    #[cfg(feature = "iced")]
+    {
+        // Iced UI variant
+        ui::iced::init(runtime);
+    }
 }
 
 pub static TARGET: RwLock<Option<LookupData>> = RwLock::const_new(None);
-
-impl Drop for App {
-    fn drop(&mut self) {
-        let _ = remove_host_entry();
-    }
-}
-
-#[derive(Debug, Clone)]
-enum AppMessage {
-    /// The redirector target address changed
-    TargetChanged(String),
-    /// The redirector target should be updated
-    UpdateTarget,
-
-    /// Display the patch game dialog asking the player to patch
-    PatchGame,
-    /// Remove the patch from the game
-    RemovePatch,
-
-    LookupResult(LookupResult),
-}
-
-#[derive(Debug, Clone)]
-enum LookupResult {
-    None,
-    Loading,
-    Success(LookupData),
-    Error(String),
-}
-
-impl Application for App {
-    type Message = AppMessage;
-    type Executor = executor::Default;
-    type Flags = ();
-    type Theme = Theme;
-
-    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        (
-            App {
-                lookup_result: LookupResult::None,
-                target: "".to_string(),
-            },
-            Command::none(),
-        )
-    }
-    fn title(&self) -> String {
-        format!("Pocket Relay Client v{}", APP_VERSION)
-    }
-
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
-        match message {
-            AppMessage::TargetChanged(value) => {
-                self.target = value;
-                Command::none()
-            }
-            AppMessage::UpdateTarget => {
-                self.lookup_result = LookupResult::Loading;
-
-                let target = self.target.clone();
-                Command::perform(tokio::spawn(try_lookup_host(target)), |result| {
-                    let result = match result {
-                        Ok(Ok(value)) => {
-                            let write = &mut *TARGET.blocking_write();
-                            *write = Some(value.clone());
-                            LookupResult::Success(value)
-                        }
-                        Ok(Err(err)) => LookupResult::Error(err.to_string()),
-                        Err(_) => LookupResult::Error("Failed to handle request".to_string()),
-                    };
-                    AppMessage::LookupResult(result)
-                })
-            }
-            AppMessage::PatchGame => {
-                match try_patch_game() {
-                    Ok(true) => show_info("Game patched", "Sucessfully patched game"),
-                    Ok(false) => {}
-                    Err(err) => show_error("Failed to patch game", &err.to_string()),
-                }
-                Command::none()
-            }
-            AppMessage::RemovePatch => {
-                match try_remove_patch() {
-                    Ok(true) => show_info("Patch removed", "Sucessfully removed patch"),
-                    Ok(false) => {}
-                    Err(err) => show_error("Failed to remove patch", &err.to_string()),
-                }
-                Command::none()
-            }
-            AppMessage::LookupResult(value) => {
-                self.lookup_result = value;
-
-                Command::none()
-            }
-        }
-    }
-
-    fn view(&self) -> iced::Element<'_, Self::Message> {
-        if let LookupResult::Loading = &self.lookup_result {
-            return self.view_loading();
-        }
-
-        self.view_initial()
-    }
-
-    fn theme(&self) -> iced::Theme {
-        iced::Theme::Dark
-    }
-}
-
-impl App {
-    fn view_loading(&self) -> iced::Element<'_, AppMessage> {
-        let notice = text("Loading...");
-        container(notice)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(20)
-            .center_x()
-            .center_y()
-            .into()
-    }
-
-    fn view_initial(&self) -> iced::Element<'_, AppMessage> {
-        let mut content = Column::new().spacing(15);
-
-        let target_row = {
-            let target_input =
-                text_input("Connection URL", &self.target, AppMessage::TargetChanged)
-                    .padding(10)
-                    .size(20);
-
-            let target_text = text("Please put the server Connection URL below and press 'Set'")
-                .style(Color::from_rgb(0.4, 0.4, 0.4));
-            let target_button = button("Set").on_press(AppMessage::UpdateTarget).padding(10);
-
-            let mut column =
-                column![target_text, row![target_input, target_button].spacing(10)].spacing(10);
-
-            if let LookupResult::Success(lookup_data) = &self.lookup_result {
-                let details = text(format!(
-                    "Connected: {} {} version v{}",
-                    lookup_data.scheme, lookup_data.host, lookup_data.version
-                ));
-                column = column.push(details);
-            } else if let LookupResult::Error(error) = &self.lookup_result {
-                let error_text = text(error);
-                column = column.push(error_text);
-            }
-
-            column
-        };
-
-        let notice = text(
-            "You must keep this program running while playing. \
-            Closing this program will cause you to connect to the official servers instead",
-        )
-        .style(Color::from_rgb(0.4, 0.4, 0.4));
-
-        let actions_row = {
-            // Game patching buttons
-            let patch_button = button("Patch Game")
-                .on_press(AppMessage::PatchGame)
-                .padding(5);
-            let unpatch_button = button("Remove Patch")
-                .on_press(AppMessage::RemovePatch)
-                .padding(5);
-
-            let patch_notice =
-                text("You must patch your game in order to make it compatible with Pocket Relay")
-                    .style(Color::from_rgb(0.4, 0.4, 0.4));
-
-            column![
-                row![patch_button, unpatch_button]
-                    .spacing(15)
-                    .width(Length::Fill),
-                patch_notice
-            ]
-            .spacing(10)
-        };
-
-        content = content.push(target_row);
-        content = content.push(notice);
-        content = content.push(actions_row);
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(20)
-            .center_x()
-            .into()
-    }
-}
 
 #[derive(Debug, Error)]
 enum HostsError {
