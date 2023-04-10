@@ -1,6 +1,6 @@
 [package]
 name = "pocket-relay-client"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 build = "build.rs"
 license = "MIT"
@@ -11,6 +11,11 @@ keywords = ["EA", "PocketRelay", "MassEffect"]
 
 [build-dependencies]
 winres = "0.1"
+
+[features]
+default = ["iced"]
+iced = ["dep:iced"]
+native = ["dep:native-windows-gui"]
 
 [dependencies]
 # Serialization and HTTP requests
@@ -24,17 +29,25 @@ blaze-ssl-async = "^0.3"
 
 # Native file picker dialog
 native-dialog = "0.6.3"
-native-windows-gui = "1.0.13"
 
 # Library for obtaining the local IP address of the device
 local-ip-address = "0.5"
 
 tokio-util = { version = "0.7", features = ["codec"] }
-
 futures-util = { version = "0.3", features = ["sink"] }
 thiserror = "1"
-pollster = "0.3.0"
 
+# Iced GUI framework variant
+[dependencies.iced]
+version = "0.8"
+default-features = false
+features = ["image_rs", "glow"]
+optional = true
+
+# Native Windows GUI framework variant
+[dependencies.native-windows-gui]
+version = "1.0.13"
+optional = true
 
 # Tokio async runtime
 [dependencies.tokio]
@@ -44,12 +57,6 @@ features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync"]
 
 [patch.crates-io]
 local-ip-address = { git = "https://github.com/jacobtread/local-ip-address.git" }
-
-# [profile.release]
-# opt-level = "z"
-# lto = true
-# codegen-units = 1
-# panic = "abort"
 
 [profile.release]
 strip = true
