@@ -44,26 +44,31 @@ impl Drop for App {
     }
 }
 
+/// Messages used for updating the game state
 #[derive(Debug, Clone)]
 enum AppMessage {
     /// The redirector target address changed
     TargetChanged(String),
     /// The redirector target should be updated
     UpdateTarget,
-
     /// Display the patch game dialog asking the player to patch
     PatchGame,
     /// Remove the patch from the game
     RemovePatch,
-
+    /// Message for setting the current lookup result state
     LookupResult(LookupResult),
 }
 
+/// Different outcomes and states for looking up
 #[derive(Debug, Clone)]
 enum LookupResult {
+    /// Lookup not yet done
     None,
+    /// Looking up value
     Loading,
+    /// Lookup complete success
     Success(LookupData),
+    /// Lookup failed error
     Error(String),
 }
 

@@ -4,6 +4,7 @@ use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
 use serde::Deserialize;
 use std::fs::{copy, read, remove_file, write};
+use std::string::FromUtf8Error;
 use std::{
     io::{self, ErrorKind},
     path::{Path, PathBuf},
@@ -16,6 +17,7 @@ mod servers;
 mod ui;
 
 fn main() {
+    // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -40,18 +42,27 @@ fn main() {
     }
 }
 
+/// Shared target location
 pub static TARGET: RwLock<Option<LookupData>> = RwLock::const_new(None);
 
+/// Errors that could occur while working with the hosts file
 #[derive(Debug, Error)]
 enum HostsError {
+    /// Hosts file doesn't exist
     #[error("Missing hosts file")]
     FileMissing,
-    #[error("Missing permission to modify hosts file")]
+    /// Missing admin permission to access file
+    #[error("Missing permission to modify hosts file. Ensure this program is running as admin")]
     PermissionsError,
-    #[error("Failed to read hosts file")]
-    ReadFailure,
-    #[error("Failed to write hosts file")]
-    WriteFailure,
+    /// Failed to read the hosts file
+    #[error("Failed to read hosts file: {0}")]
+    ReadFailure(io::Error),
+    /// Failed to write the hosts file
+    #[error("Failed to write hosts file: {0}")]
+    WriteFailure(io::Error),
+    /// File contained non-utf8 characters
+    #[error("Hosts file contained non-utf8 characters so could not be parsed.")]
+    NonUtf8(#[from] FromUtf8Error),
 }
 
 /// Attempts to read the hosts file contents to a string
@@ -61,15 +72,23 @@ fn read_hosts_file() -> Result<String, HostsError> {
     if !path.exists() {
         return Err(HostsError::FileMissing);
     }
-    let result = read(path);
-    match result {
-        Err(err) => Err(if err.kind() == ErrorKind::PermissionDenied {
-            HostsError::PermissionsError
-        } else {
-            HostsError::ReadFailure
-        }),
-        Ok(bytes) => String::from_utf8(bytes).map_err(|_| HostsError::ReadFailure),
-    }
+
+    // Read the hosts file
+    let bytes = match read(path) {
+        Ok(value) => value,
+        Err(err) => {
+            // Handle missing permissions
+            return Err(if let ErrorKind::PermissionDenied = err.kind() {
+                HostsError::PermissionsError
+            } else {
+                HostsError::ReadFailure(err)
+            });
+        }
+    };
+
+    // Parse the file contents
+    let text = String::from_utf8(bytes)?;
+    Ok(text)
 }
 
 /// Attempts to write the hosts file contents from a string
@@ -78,13 +97,14 @@ fn write_hosts_file(value: &str) -> Result<(), HostsError> {
     let path = Path::new(HOSTS_PATH);
 
     if let Err(err) = write(path, value) {
-        return Err(if err.kind() == ErrorKind::PermissionDenied {
+        Err(if let ErrorKind::PermissionDenied = err.kind() {
             HostsError::PermissionsError
         } else {
-            HostsError::WriteFailure
-        });
+            HostsError::WriteFailure(err)
+        })
+    } else {
+        Ok(())
     }
-    Ok(())
 }
 
 /// Filters lines based on whether or not they are a redirect for
@@ -170,20 +190,28 @@ struct ServerDetails {
 /// version obtained from the server
 #[derive(Debug, Clone)]
 pub struct LookupData {
+    /// The scheme used to connect to the server (e.g http or https)
     scheme: String,
+    /// The host address of the server
     host: String,
+    /// The server version
     version: String,
+    /// The server port
     port: u16,
 }
 
+/// Errors that can occur while looking up a server
 #[derive(Debug, Error)]
 enum LookupError {
+    /// The server url was missing the host portion
     #[error("Unable to find host portion of provided Connection URL")]
     InvalidHostTarget,
+    /// The server connection failed
     #[error("Failed to connect to server")]
-    ConnectionFailed,
+    ConnectionFailed(reqwest::Error),
+    /// The server gave an invalid response likely not a PR server
     #[error("Invalid server response")]
-    InvalidResponse,
+    InvalidResponse(reqwest::Error),
 }
 
 /// Attempts to connect to the Pocket Relay HTTP server at the provided
@@ -195,6 +223,7 @@ enum LookupError {
 async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
     let mut url = String::new();
 
+    // Fill in missing host portion
     if !host.starts_with("http://") && !host.starts_with("https://") {
         url.push_str("http://");
         url.push_str(&host)
@@ -210,7 +239,7 @@ async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
 
     let response = reqwest::get(url)
         .await
-        .map_err(|_| LookupError::ConnectionFailed)?;
+        .map_err(LookupError::ConnectionFailed)?;
 
     let url = response.url();
     let scheme = url.scheme().to_string();
@@ -224,7 +253,7 @@ async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
     let details = response
         .json::<ServerDetails>()
         .await
-        .map_err(|_| LookupError::InvalidResponse)?;
+        .map_err(LookupError::InvalidResponse)?;
 
     Ok(LookupData {
         scheme,
@@ -234,16 +263,22 @@ async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
     })
 }
 
+/// Errors that can occur while patching the game
 #[derive(Debug, Error)]
 enum PatchError {
+    /// The file picker failed to pick a file
     #[error("Failed to get picked file. Make sure this program is running as administrator")]
     PickFileFailed,
+    /// The picked path was missing the game exe
     #[error("The path given doesn't contains the MassEffect.exe executable")]
     MissingGame,
+    /// Failed to delete the bink232
     #[error("Failed to delete binkw32.dll you will have to manually unpatch your game: {0}")]
     FailedDelete(io::Error),
+    /// Fialed to replace the files
     #[error("Failed to replace binkw32.dll with origin binkw23.ddl: {0}")]
     FailedReplaceOriginal(io::Error),
+    /// Failed to write the patch files
     #[error("Failed to write patch file dlls (binkw32.dll and binkw32.dll): {0}")]
     FailedWritingPatchFiles(io::Error),
 }
@@ -258,19 +293,27 @@ fn try_pick_game_path() -> Result<Option<PathBuf>, PatchError> {
         .map_err(|_| PatchError::PickFileFailed)
 }
 
+/// Shows a native info dialog with the provided title and text
+///
+/// `title` The title of the dialog
+/// `text`  The text of the dialog
 pub fn show_info(title: &str, text: &str) {
     MessageDialog::new()
-        .set_title(&title)
-        .set_text(&text)
+        .set_title(title)
+        .set_text(text)
         .set_type(native_dialog::MessageType::Info)
         .show_alert()
         .unwrap()
 }
 
+/// Shows a native error dialog with the provided title and text
+///
+/// `title` The title of the dialog
+/// `text`  The text of the dialog
 pub fn show_error(title: &str, text: &str) {
     MessageDialog::new()
-        .set_title(&title)
-        .set_text(&text)
+        .set_title(title)
+        .set_text(text)
         .set_type(native_dialog::MessageType::Error)
         .show_alert()
         .unwrap()

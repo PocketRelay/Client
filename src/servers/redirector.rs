@@ -107,6 +107,7 @@ async fn handle_client(accept: BlazeAccept) -> io::Result<()> {
 
     Ok(())
 }
+
 /// Packet contents for providing the redirection details
 /// for 127.0.0.1 to allow proxying
 pub struct LocalInstance;

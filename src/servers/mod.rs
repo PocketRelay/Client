@@ -5,6 +5,7 @@ pub mod qos;
 pub mod redirector;
 pub mod telemetry;
 
+/// Starts and waits for all the servers
 pub async fn start() {
     join!(
         main::start_server(),
