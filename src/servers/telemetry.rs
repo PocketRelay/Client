@@ -7,6 +7,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
+/// Server API endpoint to send telemetry data to
 const TELEMETRY_ENDPOINT: &str = "/api/server/telemetry";
 
 pub async fn start_server() {

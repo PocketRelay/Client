@@ -32,6 +32,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .build(&mut icon)
         .unwrap();
 
+    // Create window
     ngw::Window::builder()
         .size(WINDOW_SIZE)
         .position((5, 5))
@@ -40,6 +41,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .build(&mut window)
         .unwrap();
 
+    // Create information text
     ngw::Label::builder()
         .text("Please put the server Connection URL below and press 'Set'")
         .parent(&window)
@@ -61,19 +63,20 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .build(&mut c_label)
         .unwrap();
 
+    // Create the url input and set button
     ngw::TextInput::builder()
         .text("")
         .focus(true)
         .parent(&window)
         .build(&mut target_url)
         .unwrap();
-
     ngw::Button::builder()
         .text("Set")
         .parent(&window)
         .build(&mut set_button)
         .unwrap();
 
+    // Create the patch buttons
     ngw::Button::builder()
         .text("Patch Game")
         .parent(&window)
@@ -85,6 +88,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .build(&mut pr_button)
         .unwrap();
 
+    // Create the layout grid for the UI
     ngw::GridLayout::builder()
         .parent(&window)
         .child_item(GridLayoutItem::new(&top_label, 0, 0, 2, 1))
