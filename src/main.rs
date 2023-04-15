@@ -365,7 +365,7 @@ fn try_patch_game() -> Result<bool, PatchError> {
     let binkw23 = parent.join("binkw23.dll");
     let binkw32 = parent.join("binkw32.dll");
 
-    write(&binkw23, BINKW23_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
-    write(&binkw32, BINKW32_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
+    write(binkw23, BINKW23_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
+    write(binkw32, BINKW32_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
     Ok(true)
 }

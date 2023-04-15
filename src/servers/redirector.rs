@@ -93,7 +93,7 @@ async fn handle_client(accept: BlazeAccept) -> io::Result<()> {
             None => break,
         };
 
-        if let None = Components::from_header(&packet.header) {
+        if Components::from_header(&packet.header).is_none() {
             // Empty response for packets that aren't asking to redirect
             framed.send(packet.respond_empty()).await?;
             continue;
