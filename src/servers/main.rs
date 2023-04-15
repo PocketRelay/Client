@@ -111,12 +111,12 @@ async fn pipe(mut client: TcpStream, mut server: Upgraded) -> io::Result<()> {
         select! {
             result = client.read(&mut client_buffer) => {
                 let count = result?;
-                server.write(&client_buffer[0..count]).await?;
+                server.write_all(&client_buffer[0..count]).await?;
                 server.flush().await?;
             },
             result = server.read(&mut server_buffer) => {
                 let count = result?;
-                client.write(&server_buffer[0..count]).await?;
+                client.write_all(&server_buffer[0..count]).await?;
                 client.flush().await?;
             }
         };
