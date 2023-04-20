@@ -39,9 +39,9 @@ thiserror = "1"
 
 # Iced GUI framework variant
 [dependencies.iced]
-version = "0.8"
+version = "0.9"
 default-features = false
-features = ["image_rs", "glow"]
+features = ["image", "glow", "tokio"]
 optional = true
 
 # Native Windows GUI framework variant

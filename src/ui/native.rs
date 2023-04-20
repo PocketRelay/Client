@@ -1,9 +1,8 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, try_lookup_host, try_patch_game, try_remove_patch, TARGET,
+    remove_host_entry, try_patch_game, try_remove_patch, try_update_host,
 };
 use ngw::{GridLayoutItem, Icon};
-use std::rc::Rc;
 
 extern crate native_windows_gui as ngw;
 
@@ -102,17 +101,14 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .build(&layout)
         .unwrap();
 
-    let window = Rc::new(window);
-    let events_window = window.clone();
+    let window_handle = window.handle;
 
-    let c_label = Rc::new(c_label);
-
-    let handler = ngw::full_bind_event_handler(&window.handle, move |evt, _evt_data, handle| {
+    let handler = ngw::full_bind_event_handler(&window_handle, move |event, _evt_data, handle| {
         use ngw::Event as E;
 
-        match evt {
+        match event {
             E::OnWindowClose => {
-                if &handle == &events_window as &ngw::Window {
+                if &handle == &window_handle {
                     ngw::stop_thread_dispatch();
                     let _ = remove_host_entry();
                 }
@@ -124,35 +120,27 @@ pub fn init(runtime: tokio::runtime::Runtime) {
 
                     let target = target_url.text();
 
-                    let ew = events_window.clone();
-                    let c = c_label.clone();
+                    let result = runtime.block_on(try_update_host(target));
 
-                    runtime.block_on(async move {
-                        let result = try_lookup_host(target).await;
-                        match result {
-                            Ok(value) => {
-                                let write = &mut *TARGET.write().await;
-                                *write = Some(value.clone());
-                                c.set_text(&format!(
-                                    "Connected: {} {} version v{}",
-                                    value.scheme, value.host, value.version
-                                ));
-                            }
-                            Err(err) => {
-                                c.set_text("Failed to connect");
-                                ngw::modal_error_message(
-                                    &ew.handle,
-                                    "Failed to connect",
-                                    &err.to_string(),
-                                );
-                            }
+                    match result {
+                        Ok(value) => c_label.set_text(&format!(
+                            "Connected: {} {} version v{}",
+                            value.scheme, value.host, value.version
+                        )),
+                        Err(err) => {
+                            c_label.set_text("Failed to connect");
+                            ngw::modal_error_message(
+                                &window_handle,
+                                "Failed to connect",
+                                &err.to_string(),
+                            );
                         }
-                    });
+                    }
                 } else if &handle == &p_button {
                     match try_patch_game() {
                         Ok(true) => {
                             ngw::modal_info_message(
-                                &events_window.handle,
+                                &window_handle,
                                 "Game patched",
                                 "Sucessfully patched game",
                             );
@@ -160,7 +148,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
                         Ok(false) => {}
                         Err(err) => {
                             ngw::modal_error_message(
-                                &events_window.handle,
+                                &window_handle,
                                 "Failed to patch game",
                                 &err.to_string(),
                             );
@@ -170,7 +158,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
                     match try_remove_patch() {
                         Ok(true) => {
                             ngw::modal_info_message(
-                                &events_window.handle,
+                                &window_handle,
                                 "Patch removed",
                                 "Sucessfully removed patch",
                             );
@@ -178,7 +166,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
                         Ok(false) => {}
                         Err(err) => {
                             ngw::modal_error_message(
-                                &events_window.handle,
+                                &window_handle,
                                 "Failed to remove patch",
                                 &err.to_string(),
                             );

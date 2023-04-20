@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 
 use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
@@ -38,7 +38,7 @@ fn main() {
     #[cfg(feature = "iced")]
     {
         // Iced UI variant
-        ui::iced::init(runtime);
+        ui::iced::init();
     }
 }
 
@@ -212,6 +212,18 @@ enum LookupError {
     /// The server gave an invalid response likely not a PR server
     #[error("Invalid server response")]
     InvalidResponse(reqwest::Error),
+}
+
+/// Attempts to update the host target first looks up the
+/// target then will assign the stored global target to the
+/// target before returning the result
+///
+/// `target` The target to use
+async fn try_update_host(target: String) -> Result<LookupData, LookupError> {
+    let result = try_lookup_host(target).await?;
+    let write = &mut *TARGET.write().await;
+    *write = Some(result.clone());
+    Ok(result)
 }
 
 /// Attempts to connect to the Pocket Relay HTTP server at the provided

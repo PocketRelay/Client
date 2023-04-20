@@ -1,7 +1,7 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, show_error, show_info, try_lookup_host, try_patch_game, try_remove_patch,
-    LookupData, TARGET,
+    remove_host_entry, show_error, show_info, try_patch_game, try_remove_patch, try_update_host,
+    LookupData,
 };
 use iced::{
     executor,
@@ -9,19 +9,17 @@ use iced::{
     widget::{
         button, column, container, row, text, text_input, Button, Column, Row, Text, TextInput,
     },
-    window::{self, Icon},
+    window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 280);
 
-pub fn init(runtime: tokio::runtime::Runtime) {
-    let _guard = runtime.enter();
-
+pub fn init() {
     App::run(Settings {
         window: window::Settings {
-            icon: Icon::from_file_data(ICON_BYTES, None).ok(),
+            icon: icon::from_file_data(ICON_BYTES, None).ok(),
             size: WINDOW_SIZE,
             resizable: false,
 
@@ -105,15 +103,11 @@ impl Application for App {
                 self.lookup_result = LookupResult::Loading;
 
                 let target = self.target.clone();
-                return Command::perform(tokio::spawn(try_lookup_host(target)), |result| {
+
+                return Command::perform(try_update_host(target), |result| {
                     let result = match result {
-                        Ok(Ok(value)) => {
-                            let write = &mut *TARGET.blocking_write();
-                            *write = Some(value.clone());
-                            LookupResult::Success(value)
-                        }
-                        Ok(Err(err)) => LookupResult::Error(err.to_string()),
-                        Err(_) => LookupResult::Error("Failed to handle request".to_string()),
+                        Ok(value) => LookupResult::Success(value),
+                        Err(err) => LookupResult::Error(err.to_string()),
                     };
                     AppMessage::LookupResult(result)
                 });
@@ -142,8 +136,10 @@ impl Application for App {
         const ORANGE_TEXT: Color = Color::from_rgb(0.8, 0.6, 0.4);
         const SPACING: u16 = 10;
 
-        let target_input: TextInput<_> =
-            text_input("Connection URL", &self.target, AppMessage::TargetChanged).padding(10);
+        let target_input: TextInput<_> = text_input("Connection URL", &self.target)
+            .padding(10)
+            .on_input(AppMessage::TargetChanged)
+            .on_submit(AppMessage::UpdateTarget);
 
         let target_text: Text =
             text("Please put the server Connection URL below and press 'Set'").style(DARK_TEXT);
