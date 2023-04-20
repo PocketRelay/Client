@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
@@ -221,7 +221,7 @@ enum LookupError {
 /// `target` The target to use
 async fn try_update_host(target: String) -> Result<LookupData, LookupError> {
     let result = try_lookup_host(target).await?;
-    let write = &mut *TARGET.write().await;
+    let mut write = TARGET.write().await;
     *write = Some(result.clone());
     Ok(result)
 }
