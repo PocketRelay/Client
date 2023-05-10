@@ -16,6 +16,13 @@ mod constants;
 mod servers;
 mod ui;
 
+// Native UI variant
+#[cfg(feature = "native")]
+use ui::native::init;
+// Native UI variant
+#[cfg(feature = "iced")]
+use ui::iced::init;
+
 fn main() {
     // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -29,17 +36,8 @@ fn main() {
     // Start the servers
     runtime.spawn(servers::start());
 
-    #[cfg(feature = "native")]
-    {
-        // Native UI variant
-        ui::native::init(runtime);
-    }
-
-    #[cfg(feature = "iced")]
-    {
-        // Iced UI variant
-        ui::iced::init();
-    }
+    // Initialize the UI
+    init(runtime);
 }
 
 /// Shared target location

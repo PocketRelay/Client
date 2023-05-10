@@ -16,7 +16,7 @@ use iced::{
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 280);
 
-pub fn init() {
+pub fn init(_: tokio::runtime::Runtime) {
     App::run(Settings {
         window: window::Settings {
             icon: icon::from_file_data(ICON_BYTES, None).ok(),
