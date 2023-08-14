@@ -1,7 +1,7 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, show_error, show_info, try_patch_game, try_remove_patch, try_update_host,
-    LookupData, LookupError,
+    show_error, show_info, try_patch_game, try_remove_patch, try_update_host, LookupData,
+    LookupError,
 };
 use iced::{
     executor,
@@ -34,12 +34,6 @@ pub fn init(_: tokio::runtime::Runtime) {
 struct App {
     lookup_result: LookupState,
     target: String,
-}
-
-impl Drop for App {
-    fn drop(&mut self) {
-        let _ = remove_host_entry();
-    }
 }
 
 /// Messages used for updating the game state

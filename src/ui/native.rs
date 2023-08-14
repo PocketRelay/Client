@@ -1,6 +1,6 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, try_patch_game, try_remove_patch, try_update_host,
+    try_patch_game, try_remove_patch, try_update_host,
 };
 use ngw::{GridLayoutItem, Icon};
 
@@ -110,7 +110,6 @@ pub fn init(runtime: tokio::runtime::Runtime) {
             E::OnWindowClose => {
                 if &handle == &window_handle {
                     ngw::stop_thread_dispatch();
-                    let _ = remove_host_entry();
                 }
             }
 
