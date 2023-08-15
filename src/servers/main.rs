@@ -50,11 +50,10 @@ async fn handle_blaze(mut client: TcpStream) {
     };
 
     // Create the upgrade URL
-    let mut url = String::new();
-    url.push_str(&target.scheme);
-    url.push_str("://");
-    url.push_str(&target.host);
-    url.push_str(UPGRADE_ENDPOINT);
+    let url = format!(
+        "{}://{}:{}{}",
+        target.scheme, target.host, target.port, UPGRADE_ENDPOINT
+    );
 
     // Create the HTTP Upgrade headers
     let mut headers = HeaderMap::new();
