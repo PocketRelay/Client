@@ -16,6 +16,13 @@ mod constants;
 mod servers;
 mod ui;
 
+// Native UI variant
+#[cfg(feature = "native")]
+use ui::native::init;
+// Native UI variant
+#[cfg(feature = "iced")]
+use ui::iced::init;
+
 fn main() {
     // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -29,17 +36,8 @@ fn main() {
     // Start the servers
     runtime.spawn(servers::start());
 
-    #[cfg(feature = "native")]
-    {
-        // Native UI variant
-        ui::native::init(runtime);
-    }
-
-    #[cfg(feature = "iced")]
-    {
-        // Iced UI variant
-        ui::iced::init(runtime);
-    }
+    // Initialize the UI
+    init(runtime);
 }
 
 /// Shared target location
@@ -214,6 +212,18 @@ enum LookupError {
     InvalidResponse(reqwest::Error),
 }
 
+/// Attempts to update the host target first looks up the
+/// target then will assign the stored global target to the
+/// target before returning the result
+///
+/// `target` The target to use
+async fn try_update_host(target: String) -> Result<LookupData, LookupError> {
+    let result = try_lookup_host(target).await?;
+    let mut write = TARGET.write().await;
+    *write = Some(result.clone());
+    Ok(result)
+}
+
 /// Attempts to connect to the Pocket Relay HTTP server at the provided
 /// host. Will make a connection to the /api/server endpoint and if the
 /// response is a valid ServerDetails message then the server is
@@ -365,7 +375,7 @@ fn try_patch_game() -> Result<bool, PatchError> {
     let binkw23 = parent.join("binkw23.dll");
     let binkw32 = parent.join("binkw32.dll");
 
-    write(&binkw23, BINKW23_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
-    write(&binkw32, BINKW32_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
+    write(binkw23, BINKW23_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
+    write(binkw32, BINKW32_DLL_BYTES).map_err(PatchError::FailedWritingPatchFiles)?;
     Ok(true)
 }

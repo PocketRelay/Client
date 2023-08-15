@@ -1,13 +1,12 @@
 use crate::{constants::MAIN_PORT, show_error, TARGET};
 use reqwest::{
     header::{self, HeaderMap, HeaderValue},
-    Client, Upgraded,
+    Client,
 };
-use std::{io, net::Ipv4Addr, process::exit};
+use std::{net::Ipv4Addr, process::exit};
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::copy_bidirectional,
     net::{TcpListener, TcpStream},
-    select,
 };
 
 /// Starts the main server proxy. This creates a connection to the Pocket Relay
@@ -43,21 +42,18 @@ const HEADER_PORT: &str = "X-Pocket-Relay-Port";
 const HEADER_HOST: &str = "X-Pocket-Relay-Host";
 /// Endpoint for upgrading the server connection
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
-/// The size of the buffers used for proxying data
-const BUFFER_SIZE: usize = 1024 * 8 /* 8kB buffers */;
 
-async fn handle_blaze(client: TcpStream) {
+async fn handle_blaze(mut client: TcpStream) {
     let target = match &*TARGET.read().await {
         Some(value) => value.clone(),
         None => return,
     };
 
     // Create the upgrade URL
-    let mut url = String::new();
-    url.push_str(&target.scheme);
-    url.push_str("://");
-    url.push_str(&target.host);
-    url.push_str(UPGRADE_ENDPOINT);
+    let url = format!(
+        "{}://{}:{}{}",
+        target.scheme, target.host, target.port, UPGRADE_ENDPOINT
+    );
 
     // Create the HTTP Upgrade headers
     let mut headers = HeaderMap::new();
@@ -87,38 +83,11 @@ async fn handle_blaze(client: TcpStream) {
     };
 
     // Server connection gained through upgrading the client
-    let server = match response.upgrade().await {
+    let mut server = match response.upgrade().await {
         Ok(value) => value,
         Err(_) => return,
     };
 
-    // Pipe all the content between the client and server
-    let _ = pipe(client, server).await;
-}
-
-/// Reads all the bytes from the client and the server sending the bytes to
-/// the opposite side (i.e. client -> server, and server -> client)
-///
-/// `client` The client stream to pipe
-/// `server` The server stream to pipe
-async fn pipe(mut client: TcpStream, mut server: Upgraded) -> io::Result<()> {
-    // Buffer for data recieved from the client
-    let mut client_buffer = [0u8; BUFFER_SIZE];
-    // Buffer for data recieved from the server
-    let mut server_buffer = [0u8; BUFFER_SIZE];
-
-    loop {
-        select! {
-            result = client.read(&mut client_buffer) => {
-                let count = result?;
-                server.write(&client_buffer[0..count]).await?;
-                server.flush().await?;
-            },
-            result = server.read(&mut server_buffer) => {
-                let count = result?;
-                client.write(&server_buffer[0..count]).await?;
-                client.flush().await?;
-            }
-        };
-    }
+    // Copy the data between the connection
+    let _ = copy_bidirectional(&mut client, &mut server).await;
 }

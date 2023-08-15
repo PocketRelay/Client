@@ -1,7 +1,7 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, show_error, show_info, try_lookup_host, try_patch_game, try_remove_patch,
-    LookupData, TARGET,
+    remove_host_entry, show_error, show_info, try_patch_game, try_remove_patch, try_update_host,
+    LookupData, LookupError,
 };
 use iced::{
     executor,
@@ -9,19 +9,17 @@ use iced::{
     widget::{
         button, column, container, row, text, text_input, Button, Column, Row, Text, TextInput,
     },
-    window::{self, Icon},
+    window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 280);
 
-pub fn init(runtime: tokio::runtime::Runtime) {
-    let _guard = runtime.enter();
-
+pub fn init(_: tokio::runtime::Runtime) {
     App::run(Settings {
         window: window::Settings {
-            icon: Icon::from_file_data(ICON_BYTES, None).ok(),
+            icon: icon::from_file_data(ICON_BYTES, None).ok(),
             size: WINDOW_SIZE,
             resizable: false,
 
@@ -34,7 +32,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
 }
 
 struct App {
-    lookup_result: LookupResult,
+    lookup_result: LookupState,
     target: String,
 }
 
@@ -56,12 +54,12 @@ enum AppMessage {
     /// Remove the patch from the game
     RemovePatch,
     /// Message for setting the current lookup result state
-    LookupResult(LookupResult),
+    LookupState(LookupState),
 }
 
-/// Different outcomes and states for looking up
+/// Different states that lookup process can be in
 #[derive(Debug, Clone)]
-enum LookupResult {
+enum LookupState {
     /// Lookup not yet done
     None,
     /// Looking up value
@@ -81,7 +79,7 @@ impl Application for App {
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         (
             App {
-                lookup_result: LookupResult::None,
+                lookup_result: LookupState::None,
                 target: "".to_string(),
             },
             Command::none(),
@@ -94,43 +92,51 @@ impl Application for App {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            AppMessage::TargetChanged(value) => {
-                self.target = value;
-            }
+            // Update the stored target
+            AppMessage::TargetChanged(value) => self.target = value,
+            // Handle new target being set
             AppMessage::UpdateTarget => {
-                if let LookupResult::Loading = self.lookup_result {
+                // Don't try to lookup if already looking up
+                if let LookupState::Loading = self.lookup_result {
                     return Command::none();
                 }
 
-                self.lookup_result = LookupResult::Loading;
+                self.lookup_result = LookupState::Loading;
 
                 let target = self.target.clone();
-                return Command::perform(tokio::spawn(try_lookup_host(target)), |result| {
+
+                // Handling for once the async lookup is complete
+                let post_lookup = |result: Result<LookupData, LookupError>| {
                     let result = match result {
-                        Ok(Ok(value)) => {
-                            let write = &mut *TARGET.blocking_write();
-                            *write = Some(value.clone());
-                            LookupResult::Success(value)
-                        }
-                        Ok(Err(err)) => LookupResult::Error(err.to_string()),
-                        Err(_) => LookupResult::Error("Failed to handle request".to_string()),
+                        Ok(value) => LookupState::Success(value),
+                        Err(err) => LookupState::Error(err.to_string()),
                     };
-                    AppMessage::LookupResult(result)
-                });
+                    AppMessage::LookupState(result)
+                };
+
+                // Perform the async lookup with the callback
+                return Command::perform(try_update_host(target), post_lookup);
             }
+            // Patching
             AppMessage::PatchGame => match try_patch_game() {
+                // Game was patched
                 Ok(true) => show_info("Game patched", "Sucessfully patched game"),
+                // Patching was cancelled
                 Ok(false) => {}
+                // Error occurred
                 Err(err) => show_error("Failed to patch game", &err.to_string()),
             },
+            // Patch removal
             AppMessage::RemovePatch => match try_remove_patch() {
+                // Patch was removed
                 Ok(true) => show_info("Patch removed", "Sucessfully removed patch"),
+                // Patch removal cancelled
                 Ok(false) => {}
+                // Error occurred
                 Err(err) => show_error("Failed to remove patch", &err.to_string()),
             },
-            AppMessage::LookupResult(value) => {
-                self.lookup_result = value;
-            }
+            // Lookup result changed
+            AppMessage::LookupState(value) => self.lookup_result = value,
         }
         Command::none()
     }
@@ -142,22 +148,24 @@ impl Application for App {
         const ORANGE_TEXT: Color = Color::from_rgb(0.8, 0.6, 0.4);
         const SPACING: u16 = 10;
 
-        let target_input: TextInput<_> =
-            text_input("Connection URL", &self.target, AppMessage::TargetChanged).padding(10);
+        let target_input: TextInput<_> = text_input("Connection URL", &self.target)
+            .padding(10)
+            .on_input(AppMessage::TargetChanged)
+            .on_submit(AppMessage::UpdateTarget);
 
         let target_text: Text =
             text("Please put the server Connection URL below and press 'Set'").style(DARK_TEXT);
         let target_button: Button<_> = button("Set").on_press(AppMessage::UpdateTarget).padding(10);
 
         let status_text: Text = match &self.lookup_result {
-            LookupResult::None => text("Not Connected.").style(ORANGE_TEXT),
-            LookupResult::Loading => text("Connecting...").style(YELLOW_TEXT),
-            LookupResult::Success(lookup_data) => text(format!(
+            LookupState::None => text("Not Connected.").style(ORANGE_TEXT),
+            LookupState::Loading => text("Connecting...").style(YELLOW_TEXT),
+            LookupState::Success(lookup_data) => text(format!(
                 "Connected: {} {} version v{}",
                 lookup_data.scheme, lookup_data.host, lookup_data.version
             ))
             .style(Palette::DARK.success),
-            LookupResult::Error(err) => text(err).style(Palette::DARK.danger),
+            LookupState::Error(err) => text(err).style(Palette::DARK.danger),
         };
 
         let target_row: Row<_> = row![target_input, target_button].spacing(SPACING);
