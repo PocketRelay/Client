@@ -1,20 +1,25 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, try_patch_game, try_remove_patch, try_update_host,
+    remove_host_entry, try_patch_game, try_remove_patch, try_update_host, ClientConfig,
 };
-use ngw::{GridLayoutItem, Icon};
+use ngw::{CheckBoxState, GridLayoutItem, Icon};
 
 extern crate native_windows_gui as ngw;
 
 pub const WINDOW_SIZE: (i32, i32) = (500, 300);
 
-pub fn init(runtime: tokio::runtime::Runtime) {
+pub fn init(runtime: tokio::runtime::Runtime, config: Option<ClientConfig>) {
     ngw::init().expect("Failed to initialize native UI");
     ngw::Font::set_global_family("Segoe UI").expect("Failed to set default font");
+
+    let (target, remember) = config
+        .map(|value| (value.connection_url, true))
+        .unwrap_or_default();
 
     let mut window = Default::default();
     let mut target_url = Default::default();
     let mut set_button = Default::default();
+    let mut remember_checkbox = Default::default();
     let mut p_button = Default::default();
     let mut pr_button = Default::default();
     let layout = Default::default();
@@ -64,7 +69,7 @@ pub fn init(runtime: tokio::runtime::Runtime) {
 
     // Create the url input and set button
     ngw::TextInput::builder()
-        .text("")
+        .text(&target)
         .focus(true)
         .parent(&window)
         .build(&mut target_url)
@@ -73,6 +78,16 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .text("Set")
         .parent(&window)
         .build(&mut set_button)
+        .unwrap();
+    ngw::CheckBox::builder()
+        .text("Save connection URL")
+        .check_state(if remember {
+            CheckBoxState::Checked
+        } else {
+            CheckBoxState::Unchecked
+        })
+        .parent(&window)
+        .build(&mut remember_checkbox)
         .unwrap();
 
     // Create the patch buttons
@@ -93,11 +108,12 @@ pub fn init(runtime: tokio::runtime::Runtime) {
         .child_item(GridLayoutItem::new(&top_label, 0, 0, 2, 1))
         .child_item(GridLayoutItem::new(&target_url, 0, 1, 2, 1))
         .child_item(GridLayoutItem::new(&set_button, 0, 2, 2, 1))
-        .child_item(GridLayoutItem::new(&c_label, 0, 3, 2, 1))
-        .child_item(GridLayoutItem::new(&mid_label, 0, 4, 2, 1))
-        .child_item(GridLayoutItem::new(&p_button, 0, 5, 1, 1))
-        .child_item(GridLayoutItem::new(&pr_button, 1, 5, 1, 1))
-        .child_item(GridLayoutItem::new(&bot_label, 0, 6, 2, 1))
+        .child_item(GridLayoutItem::new(&remember_checkbox, 0, 3, 2, 1))
+        .child_item(GridLayoutItem::new(&c_label, 0, 4, 2, 1))
+        .child_item(GridLayoutItem::new(&mid_label, 0, 5, 2, 1))
+        .child_item(GridLayoutItem::new(&p_button, 0, 6, 1, 1))
+        .child_item(GridLayoutItem::new(&pr_button, 1, 6, 1, 1))
+        .child_item(GridLayoutItem::new(&bot_label, 0, 7, 2, 1))
         .build(&layout)
         .unwrap();
 
@@ -120,7 +136,10 @@ pub fn init(runtime: tokio::runtime::Runtime) {
 
                     let target = target_url.text();
 
-                    let result = runtime.block_on(try_update_host(target));
+                    let result = runtime.block_on(try_update_host(
+                        target,
+                        remember_checkbox.check_state() == CheckBoxState::Checked,
+                    ));
 
                     match result {
                         Ok(value) => c_label.set_text(&format!(

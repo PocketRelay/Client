@@ -1,6 +1,6 @@
 [package]
 name = "pocket-relay-client"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 build = "build.rs"
 license = "MIT"
@@ -21,6 +21,7 @@ native = ["dep:native-windows-gui"]
 # Serialization and HTTP requests
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 # Blaze packet system 
 blaze-pk = "1"

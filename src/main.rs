@@ -2,7 +2,8 @@
 
 use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::env::{current_dir, current_exe};
 use std::fs::{copy, read, remove_file, write};
 use std::string::FromUtf8Error;
 use std::{
@@ -11,6 +12,7 @@ use std::{
 };
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tokio::task::spawn_blocking;
 
 mod constants;
 mod servers;
@@ -24,6 +26,8 @@ use ui::native::init;
 use ui::iced::init;
 
 fn main() {
+    let config = read_config_file();
+
     // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -37,7 +41,63 @@ fn main() {
     runtime.spawn(servers::start());
 
     // Initialize the UI
-    init(runtime);
+    init(runtime, config);
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ClientConfig {
+    pub connection_url: String,
+}
+
+fn read_config_file() -> Option<ClientConfig> {
+    let current_path = current_exe().unwrap();
+    let parent = current_path
+        .parent()
+        .expect("Missing parent directory to current exe path");
+
+    let file_path = parent.join(CONFIG_FILE_NAME);
+    if !file_path.exists() {
+        return None;
+    }
+
+    let bytes = match read(file_path) {
+        Ok(value) => value,
+        Err(err) => {
+            show_error("Failed to read client config", &err.to_string());
+            return None;
+        }
+    };
+
+    let config: ClientConfig = match serde_json::from_slice(&bytes) {
+        Ok(value) => value,
+        Err(err) => {
+            show_error("Failed to parse client config", &err.to_string());
+            return None;
+        }
+    };
+
+    Some(config)
+}
+
+fn write_config_file(config: &ClientConfig) {
+    let current_path = current_exe().unwrap();
+    let parent = current_path
+        .parent()
+        .expect("Missing parent directory to current exe path");
+
+    let file_path = parent.join(CONFIG_FILE_NAME);
+
+    let bytes = match serde_json::to_vec(config) {
+        Ok(value) => value,
+        Err(err) => {
+            show_error("Failed to save client config", &err.to_string());
+            return;
+        }
+    };
+
+    if let Err(err) = write(file_path, bytes) {
+        show_error("Failed to save client config", &err.to_string());
+    }
 }
 
 /// Shared target location
@@ -217,10 +277,21 @@ enum LookupError {
 /// target before returning the result
 ///
 /// `target` The target to use
-async fn try_update_host(target: String) -> Result<LookupData, LookupError> {
-    let result = try_lookup_host(target).await?;
+async fn try_update_host(target: String, persist: bool) -> Result<LookupData, LookupError> {
+    let result = try_lookup_host(&target).await?;
     let mut write = TARGET.write().await;
     *write = Some(result.clone());
+
+    // Write the config file with the new connection URL
+    if persist {
+        _ = spawn_blocking(move || {
+            write_config_file(&ClientConfig {
+                connection_url: target,
+            })
+        })
+        .await;
+    }
+
     Ok(result)
 }
 
@@ -230,15 +301,15 @@ async fn try_update_host(target: String) -> Result<LookupData, LookupError> {
 /// considered valid.
 ///
 /// `host` The host to try and lookup
-async fn try_lookup_host(host: String) -> Result<LookupData, LookupError> {
+async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
     let mut url = String::new();
 
     // Fill in missing host portion
     if !host.starts_with("http://") && !host.starts_with("https://") {
         url.push_str("http://");
-        url.push_str(&host)
+        url.push_str(host)
     } else {
-        url.push_str(&host);
+        url.push_str(host);
     }
 
     if !host.ends_with('/') {

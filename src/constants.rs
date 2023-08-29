@@ -24,3 +24,6 @@ pub const MAIN_PORT: u16 = 42128;
 pub const TELEMETRY_PORT: u16 = 42129;
 /// The local quality of service server port
 pub const QOS_PORT: u16 = 42130;
+
+/// Name of the file that stores saved pocket relay configuration info
+pub const CONFIG_FILE_NAME: &str = "pocket-relay-client.json";
