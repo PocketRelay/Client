@@ -2,7 +2,8 @@
 
 use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::env::current_dir;
 use std::fs::{copy, read, remove_file, write};
 use std::string::FromUtf8Error;
 use std::{
@@ -24,6 +25,8 @@ use ui::native::init;
 use ui::iced::init;
 
 fn main() {
+    let config = read_config_file();
+
     // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -37,7 +40,38 @@ fn main() {
     runtime.spawn(servers::start());
 
     // Initialize the UI
-    init(runtime);
+    init(runtime, config);
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ClientConfig {
+    pub connection_url: String,
+}
+
+pub fn read_config_file() -> Option<ClientConfig> {
+    let current_path = current_dir().unwrap();
+    let file_path = current_path.join(CONFIG_FILE_NAME);
+    if !file_path.exists() {
+        return None;
+    }
+
+    let bytes = match read(file_path) {
+        Ok(value) => value,
+        Err(err) => return None,
+    };
+
+    let config: ClientConfig = match serde_json::from_slice(&bytes) {
+        Ok(value) => value,
+        Err(err) => {
+            show_error(
+                "Failed to parse client config",
+                "Client configuration failed to be parsed, it will be ignored",
+            );
+            return None;
+        }
+    };
+
+    Some(config)
 }
 
 /// Shared target location

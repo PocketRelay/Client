@@ -2522,6 +2522,7 @@ dependencies = [
  "native-windows-gui",
  "reqwest",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-util",

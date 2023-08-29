@@ -1,6 +1,6 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, try_patch_game, try_remove_patch, try_update_host,
+    remove_host_entry, try_patch_game, try_remove_patch, try_update_host, ClientConfig,
 };
 use ngw::{GridLayoutItem, Icon};
 
@@ -8,7 +8,7 @@ extern crate native_windows_gui as ngw;
 
 pub const WINDOW_SIZE: (i32, i32) = (500, 300);
 
-pub fn init(runtime: tokio::runtime::Runtime) {
+pub fn init(runtime: tokio::runtime::Runtime, config: Option<ClientConfig>) {
     ngw::init().expect("Failed to initialize native UI");
     ngw::Font::set_global_family("Segoe UI").expect("Failed to set default font");
 

@@ -1,22 +1,23 @@
 use crate::{
     constants::{APP_VERSION, ICON_BYTES},
     remove_host_entry, show_error, show_info, try_patch_game, try_remove_patch, try_update_host,
-    LookupData, LookupError,
+    ClientConfig, LookupData, LookupError,
 };
 use iced::{
     executor,
     theme::Palette,
     widget::{
-        button, column, container, row, text, text_input, Button, Column, Row, Text, TextInput,
+        button, checkbox, column, container, row, text, text_input, Button, Checkbox, Column, Row,
+        Text, TextInput,
     },
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
 
 /// The window size
-pub const WINDOW_SIZE: (u32, u32) = (500, 280);
+pub const WINDOW_SIZE: (u32, u32) = (500, 310);
 
-pub fn init(_: tokio::runtime::Runtime) {
+pub fn init(_: tokio::runtime::Runtime, config: Option<ClientConfig>) {
     App::run(Settings {
         window: window::Settings {
             icon: icon::from_file_data(ICON_BYTES, None).ok(),
@@ -25,7 +26,7 @@ pub fn init(_: tokio::runtime::Runtime) {
 
             ..window::Settings::default()
         },
-
+        flags: config,
         ..Settings::default()
     })
     .unwrap();
@@ -33,6 +34,7 @@ pub fn init(_: tokio::runtime::Runtime) {
 
 struct App {
     lookup_result: LookupState,
+    remember: bool,
     target: String,
 }
 
@@ -55,6 +57,8 @@ enum AppMessage {
     RemovePatch,
     /// Message for setting the current lookup result state
     LookupState(LookupState),
+    /// The remember checkbox button has changed
+    RememberChanged(bool),
 }
 
 /// Different states that lookup process can be in
@@ -73,14 +77,19 @@ enum LookupState {
 impl Application for App {
     type Message = AppMessage;
     type Executor = executor::Default;
-    type Flags = ();
+    type Flags = Option<ClientConfig>;
     type Theme = Theme;
 
-    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
+    fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
+        let (target, remember) = flags
+            .map(|value| (value.connection_url, true))
+            .unwrap_or_default();
+
         (
             App {
                 lookup_result: LookupState::None,
-                target: "".to_string(),
+                target,
+                remember,
             },
             Command::none(),
         )
@@ -137,6 +146,8 @@ impl Application for App {
             },
             // Lookup result changed
             AppMessage::LookupState(value) => self.lookup_result = value,
+            // Remember value changed
+            AppMessage::RememberChanged(value) => self.remember = value,
         }
         Command::none()
     }
@@ -170,6 +181,15 @@ impl Application for App {
 
         let target_row: Row<_> = row![target_input, target_button].spacing(SPACING);
 
+        let remember_check = checkbox(
+            "Save connection URL",
+            self.remember,
+            AppMessage::RememberChanged,
+        )
+        .text_size(16)
+        .size(20)
+        .spacing(SPACING);
+
         // Keep running notice
         let notice = text(
             "You must keep this program running while playing. \
@@ -199,6 +219,7 @@ impl Application for App {
         let content: Column<_> = column![
             target_text,
             target_row,
+            remember_check,
             status_text,
             notice,
             patch_notice,

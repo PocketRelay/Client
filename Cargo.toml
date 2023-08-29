@@ -21,6 +21,7 @@ native = ["dep:native-windows-gui"]
 # Serialization and HTTP requests
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 # Blaze packet system 
 blaze-pk = "1"
