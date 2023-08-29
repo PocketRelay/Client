@@ -3,7 +3,7 @@
 use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
 use serde::{Deserialize, Serialize};
-use std::env::{current_dir, current_exe};
+use std::env::current_exe;
 use std::fs::{copy, read, remove_file, write};
 use std::string::FromUtf8Error;
 use std::{
