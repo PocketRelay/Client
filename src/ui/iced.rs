@@ -7,8 +7,8 @@ use iced::{
     executor,
     theme::Palette,
     widget::{
-        button, checkbox, column, container, row, text, text_input, Button, Checkbox, Column, Row,
-        Text, TextInput,
+        button, checkbox, column, container, row, text, text_input, Button, Column, Row, Text,
+        TextInput,
     },
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
@@ -124,7 +124,7 @@ impl Application for App {
                 };
 
                 // Perform the async lookup with the callback
-                return Command::perform(try_update_host(target), post_lookup);
+                return Command::perform(try_update_host(target, self.remember), post_lookup);
             }
             // Patching
             AppMessage::PatchGame => match try_patch_game() {
