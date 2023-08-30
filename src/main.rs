@@ -265,10 +265,10 @@ enum LookupError {
     #[error("Unable to find host portion of provided Connection URL")]
     InvalidHostTarget,
     /// The server connection failed
-    #[error("Failed to connect to server")]
+    #[error("Failed to connect to server: {0}")]
     ConnectionFailed(reqwest::Error),
     /// The server gave an invalid response likely not a PR server
-    #[error("Invalid server response")]
+    #[error("Invalid server response: {0}")]
     InvalidResponse(reqwest::Error),
 }
 
