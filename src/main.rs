@@ -1,4 +1,7 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions),),
+    windows_subsystem = "windows"
+)]
 
 use constants::*;
 use native_dialog::{FileDialog, MessageDialog};
@@ -17,6 +20,7 @@ use tokio::task::spawn_blocking;
 mod constants;
 mod servers;
 mod ui;
+mod update;
 
 // Native UI variant
 #[cfg(feature = "native")]
@@ -36,6 +40,8 @@ fn main() {
 
     // Add the hosts file entry
     let _ = set_host_entry();
+
+    runtime.spawn(update::update());
 
     // Start the servers
     runtime.spawn(servers::start());
@@ -397,6 +403,19 @@ pub fn show_error(title: &str, text: &str) {
         .set_text(text)
         .set_type(native_dialog::MessageType::Error)
         .show_alert()
+        .unwrap()
+}
+
+/// Shows a native confirm dialog with the provided title and text
+///
+/// `title` The title of the dialog
+/// `text`  The text of the dialog
+pub fn show_confirm(title: &str, text: &str) -> bool {
+    MessageDialog::new()
+        .set_title(title)
+        .set_text(text)
+        .set_type(native_dialog::MessageType::Info)
+        .show_confirm()
         .unwrap()
 }
 

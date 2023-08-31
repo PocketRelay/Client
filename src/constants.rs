@@ -27,3 +27,6 @@ pub const QOS_PORT: u16 = 42130;
 
 /// Name of the file that stores saved pocket relay configuration info
 pub const CONFIG_FILE_NAME: &str = "pocket-relay-client.json";
+
+/// Constant for whether the client is the native or iced UI version
+pub const IS_NATIVE_VERSION: bool = cfg!(feature = "native");
