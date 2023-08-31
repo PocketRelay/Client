@@ -37,6 +37,7 @@ local-ip-address = "0.5"
 tokio-util = { version = "0.7", features = ["codec"] }
 futures-util = { version = "0.3", features = ["sink"] }
 thiserror = "1"
+semver = "1.0.18"
 
 # Iced GUI framework variant
 [dependencies.iced]
@@ -53,7 +54,7 @@ optional = true
 # Tokio async runtime
 [dependencies.tokio]
 version = "1"
-features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync"]
+features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync", "fs"]
 
 
 [patch.crates-io]
