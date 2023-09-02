@@ -7,8 +7,8 @@ use iced::{
     executor,
     theme::Palette,
     widget::{
-        button, checkbox, column, container, row, text, text_input, Button, Column, Row, Text,
-        TextInput,
+        button, checkbox, column, container, row, scrollable, scrollable::Properties, text,
+        text_input, Button, Column, Row, Text, TextInput,
     },
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
@@ -178,6 +178,9 @@ impl Application for App {
             .style(Palette::DARK.success),
             LookupState::Error(err) => text(err).style(Palette::DARK.danger),
         };
+
+        let status_text =
+            scrollable(status_text).horizontal_scroll(Properties::new().width(2).scroller_width(2));
 
         let target_row: Row<_> = row![target_input, target_button].spacing(SPACING);
 

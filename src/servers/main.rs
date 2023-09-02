@@ -40,6 +40,9 @@ const HEADER_SCHEME: &str = "X-Pocket-Relay-Scheme";
 const HEADER_PORT: &str = "X-Pocket-Relay-Port";
 /// Header for the Pocket Relay connection host used by the client
 const HEADER_HOST: &str = "X-Pocket-Relay-Host";
+/// Header to tell the server to use local HTTP
+const HEADER_LOCAL_HTTP: &str = "X-Pocket-Relay-Local-Http";
+
 /// Endpoint for upgrading the server connection
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
 
@@ -72,6 +75,9 @@ async fn handle_blaze(mut client: TcpStream) {
     if let Ok(host_value) = HeaderValue::from_str(&target.host) {
         headers.insert(HEADER_HOST, host_value);
     }
+
+    // Append use local http header
+    headers.insert(HEADER_LOCAL_HTTP, HeaderValue::from_static("true"));
 
     // Create the request
     let request = Client::new().get(url).headers(headers).send();

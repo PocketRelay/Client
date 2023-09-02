@@ -1,5 +1,6 @@
 use tokio::join;
 
+pub mod http;
 pub mod main;
 pub mod qos;
 pub mod redirector;
@@ -11,6 +12,7 @@ pub async fn start() {
         main::start_server(),
         qos::start_server(),
         redirector::start_server(),
-        telemetry::start_server()
+        telemetry::start_server(),
+        http::start_server()
     );
 }

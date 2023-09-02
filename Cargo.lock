@@ -2511,11 +2511,12 @@ dependencies = [
 
 [[package]]
 name = "pocket-relay-client"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "blaze-pk",
  "blaze-ssl-async",
  "futures-util",
+ "hyper",
  "iced",
  "local-ip-address",
  "native-dialog",
