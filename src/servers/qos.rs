@@ -19,35 +19,44 @@ pub async fn start_server() {
     };
 
     // Buffer for the heading portion of the incoming message
-    let mut buffer = [0u8; 20];
+    let mut buffer = [0u8; 64];
     // Buffer for the output message
-    let mut output = [0u8; 30];
+    let mut output = [0u8; 128];
 
     loop {
-        let (_, addr) = match socket.recv_from(&mut buffer).await {
+        let (count, addr) = match socket.recv_from(&mut buffer).await {
             Ok(value) => value,
             Err(_) => continue,
         };
 
         let address = match public_address().await {
             Some(value) => value,
-            None => continue,
+            None => {
+                if let SocketAddr::V4(addr) = addr {
+                    *addr.ip()
+                } else {
+                    Ipv4Addr::LOCALHOST
+                }
+            }
         };
 
-        let port = addr.port().to_be_bytes();
+        // Get the new buffer content
+        let recv = &buffer[..count];
+
+        // Get the address and port bytes
         let address = address.octets();
+        let port = addr.port().to_be_bytes();
 
-        // Copy the heading from the read buffer
-        output[..20].copy_from_slice(&buffer);
+        // Compute the content lengths
+        let addr_end = count + 4;
+        let port_end = addr_end + 2;
+        let total_length = port_end + 4;
 
-        // Copy the address bytes
-        output[20..24].copy_from_slice(&address);
-
-        // Copy the port bytes
-        output[24..26].copy_from_slice(&port);
-
-        // Fill remaining contents
-        output[26..].copy_from_slice(&[0, 0, 0, 0]);
+        // Copy the output
+        output[..count].copy_from_slice(recv);
+        output[count..addr_end].copy_from_slice(&address);
+        output[addr_end..port_end].copy_from_slice(&port);
+        output[port_end..total_length].copy_from_slice(&[0, 0, 0, 0]);
 
         // Send output response
         let _ = socket.send_to(&output, addr).await;
