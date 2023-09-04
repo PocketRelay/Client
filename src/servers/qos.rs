@@ -29,7 +29,7 @@ pub async fn start_server() {
             Err(_) => continue,
         };
 
-        let address = match get_address(&addr).await {
+        let address = match public_address().await {
             Some(value) => value,
             None => continue,
         };
@@ -52,25 +52,6 @@ pub async fn start_server() {
         // Send output response
         let _ = socket.send_to(&output, addr).await;
     }
-}
-
-/// Gets the public address for the provided socket address. Non Ipv4 addresses
-/// fail returning None. Loopback and private addresses use the resolved public
-/// address of the server and the rest are used directly
-///
-/// `addr` The address to get the public addr for
-async fn get_address(addr: &SocketAddr) -> Option<Ipv4Addr> {
-    let ip = addr.ip();
-    if let IpAddr::V4(value) = ip {
-        // Attempt to lookup machine public address to use
-        if value.is_loopback() || value.is_private() {
-            if let Some(public_addr) = public_address().await {
-                return Some(public_addr);
-            }
-        }
-        return Some(value);
-    }
-    None
 }
 
 /// Caching structure for the public address value
