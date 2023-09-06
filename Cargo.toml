@@ -57,10 +57,6 @@ optional = true
 version = "1"
 features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync", "fs"]
 
-
-[patch.crates-io]
-local-ip-address = { git = "https://github.com/jacobtread/local-ip-address.git" }
-
 [profile.release]
 strip = true
 lto = true
