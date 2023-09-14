@@ -63,15 +63,10 @@ async fn proxy_http(req: Request<hyper::body::Body>) -> Result<Response<Body>, I
     };
 
     let client = Client::new();
-    let proxy_response = match client
-        .get(target_url)
-        .headers(req.headers().clone())
-        .send()
-        .await
-    {
+    let proxy_response = match client.get(target_url).send().await {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to send HTTP request: {}", err);
+            eprintln!("Failed to send HTTP request: {:?}", err);
             let mut error_response = Response::new(hyper::Body::empty());
             *error_response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
             return Ok(error_response);
