@@ -40,12 +40,14 @@ futures = "0.3"
 thiserror = "1"
 semver = "1.0.18"
 hyper = { version = "0.14", features = ["server", "http1", "tcp", "runtime"] }
+log = "0.4.20"
+env_logger = "0.10.0"
 
 # Iced GUI framework variant
 [dependencies.iced]
-version = "0.9"
+version = "0.10"
 default-features = false
-features = ["image", "glow", "tokio"]
+features = ["image", "tokio"]
 optional = true
 
 # Native Windows GUI framework variant

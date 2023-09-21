@@ -179,8 +179,9 @@ impl Application for App {
             LookupState::Error(err) => text(err).style(Palette::DARK.danger),
         };
 
-        let status_text =
-            scrollable(status_text).horizontal_scroll(Properties::new().width(2).scroller_width(2));
+        let status_text = scrollable(status_text).direction(scrollable::Direction::Horizontal(
+            Properties::new().width(2).scroller_width(2),
+        ));
 
         let target_row: Row<_> = row![target_input, target_button].spacing(SPACING);
 
