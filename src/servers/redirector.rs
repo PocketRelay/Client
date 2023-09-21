@@ -2,17 +2,15 @@ use crate::{
     constants::{MAIN_PORT, REDIRECTOR_PORT},
     show_error,
 };
-use blaze_pk::{
-    codec::Encodable,
-    packet::{PacketCodec, PacketComponents},
-    writer::TdfWriter,
-    PacketComponent, PacketComponents,
-};
+
 use blaze_ssl_async::{BlazeAccept, BlazeListener};
-use futures_util::{SinkExt, StreamExt};
+use futures::{SinkExt, StreamExt};
 use std::{io, net::Ipv4Addr, process::exit, time::Duration};
+use tdf::TdfSerialize;
 use tokio::{select, time::sleep};
 use tokio_util::codec::Framed;
+
+use super::packet::{Packet, PacketCodec};
 
 /// Redirector server. Handles directing clients that connect to the local
 /// proxy server that will connect them to the target server.
@@ -45,23 +43,10 @@ pub async fn start_server() {
 
 /// The timeout before idle redirector connections are terminated
 /// (1 minutes before disconnect timeout)
-static DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Packet components this server knows how to deal with
-#[derive(Debug, Hash, PartialEq, Eq, PacketComponents)]
-pub enum Components {
-    /// Redirector component
-    #[component(target = 0x5)]
-    Redirector(Redirector),
-}
-
-/// Commands within the Redirector component that we can handle
-#[derive(Debug, Hash, PartialEq, Eq, PacketComponent)]
-pub enum Redirector {
-    /// Command requesting the server instance
-    #[command(target = 0x1)]
-    GetServerInstance,
-}
+const REDIRECTOR: u16 = 0x5;
+const GET_SERVER_INSTANCE: u16 = 0x1;
 
 /// Handles dealing with a redirector client
 ///
@@ -93,14 +78,16 @@ async fn handle_client(accept: BlazeAccept) -> io::Result<()> {
             None => break,
         };
 
-        if Components::from_header(&packet.header).is_none() {
+        let header = packet.header;
+
+        if header.component != REDIRECTOR || header.command != GET_SERVER_INSTANCE {
             // Empty response for packets that aren't asking to redirect
-            framed.send(packet.respond_empty()).await?;
+            framed.send(Packet::response_empty(&packet)).await?;
             continue;
         }
 
         // Response with the instance details
-        let response = packet.respond(LocalInstance {});
+        let response = Packet::response(&packet, LocalInstance);
         framed.send(response).await?;
         break;
     }
@@ -112,18 +99,18 @@ async fn handle_client(accept: BlazeAccept) -> io::Result<()> {
 /// for 127.0.0.1 to allow proxying
 pub struct LocalInstance;
 
-impl Encodable for LocalInstance {
-    fn encode(&self, writer: &mut TdfWriter) {
-        writer.tag_union_start(b"ADDR", 0x0); /* Server address type */
+impl TdfSerialize for LocalInstance {
+    fn serialize<S: tdf::TdfSerializer>(&self, w: &mut S) {
+        w.tag_union_start(b"ADDR", 0x0); /* Server address type */
 
         // Encode the net address portion
-        writer.tag_group(b"VALU");
-        writer.tag_u32(b"IP", u32::from_be_bytes([127, 0, 0, 1]));
-        writer.tag_u16(b"PORT", MAIN_PORT);
-        writer.tag_group_end();
+        w.group(b"VALU", |w| {
+            w.tag_u32(b"IP", u32::from_be_bytes([127, 0, 0, 1]));
+            w.tag_u16(b"PORT", MAIN_PORT);
+        });
 
         // Extra deatils
-        writer.tag_bool(b"SECU", false); /* SSLv3 Enabled */
-        writer.tag_bool(b"XDNS", false);
+        w.tag_bool(b"SECU", false); /* SSLv3 Enabled */
+        w.tag_bool(b"XDNS", false);
     }
 }

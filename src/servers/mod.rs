@@ -2,6 +2,7 @@ use tokio::join;
 
 pub mod http;
 pub mod main;
+pub mod packet;
 pub mod qos;
 pub mod redirector;
 pub mod telemetry;
