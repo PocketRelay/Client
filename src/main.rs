@@ -23,7 +23,11 @@ use ui::native::init;
 use ui::iced::init;
 
 fn main() {
-    let _ = HostEntryGuard::apply();
+    env_logger::builder()
+        .filter_module("pocket_relay_client", log::LevelFilter::Debug)
+        .init();
+
+    let _host_guard = HostEntryGuard::apply();
 
     // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -34,8 +38,6 @@ fn main() {
     let config = runtime.block_on(read_config_file());
 
     runtime.spawn(update::update());
-
-    // Start the servers
     runtime.spawn(servers::start());
 
     // Initialize the UI

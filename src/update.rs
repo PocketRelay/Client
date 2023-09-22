@@ -1,8 +1,8 @@
 use std::{env::current_exe, path::Path, process::exit};
-
 use crate::{
     constants::{APP_VERSION, IS_NATIVE_VERSION}, ui::{show_info, show_error, show_confirm},
 };
+use log::{debug, error};
 use reqwest::header::{ACCEPT, USER_AGENT};
 use semver::Version;
 use serde::Deserialize;
@@ -68,11 +68,11 @@ pub async fn download_latest_release(
 
 /// Handles the updating process
 pub async fn update() {
-    println!("Checking for updates");
+    debug!("Checking for updates");
     let latest_release = match get_latest_release().await {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to fetch latest release: {}", err);
+            error!("Failed to fetch latest release: {}", err);
             return;
         }
     };
@@ -85,7 +85,7 @@ pub async fn update() {
     let latest_version = match Version::parse(latest_tag) {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to parse version of latest release: {}", err);
+            error!("Failed to parse version of latest release: {}", err);
             return;
         }
     };
@@ -94,15 +94,15 @@ pub async fn update() {
 
     if latest_version <= current_version {
         if current_version > latest_version {
-            println!("Future release is installed ({})", current_version);
+            debug!("Future release is installed ({})", current_version);
         } else {
-            println!("Latest version is installed ({})", current_version);
+            debug!("Latest version is installed ({})", current_version);
         }
 
         return;
     }
 
-    println!("New version is available ({})", latest_version);
+    debug!("New version is available ({})", latest_version);
 
     let asset_name = if IS_NATIVE_VERSION {
         "pocket-relay-client-native.exe"
@@ -117,7 +117,7 @@ pub async fn update() {
     {
         Some(value) => value,
         None => {
-            eprintln!("Server release is missing the desired binary, cannot update");
+            error!("Server release is missing the desired binary, cannot update");
             return;
         }
     };
@@ -141,7 +141,7 @@ pub async fn update() {
     let tmp_file = parent.join("pocket-relay-client.exe.tmp-download");
     let tmp_old = parent.join("pocket-relay-client.exe.tmp-old");
 
-    println!("Downloading release");
+    debug!("Downloading release");
 
     if let Err(err) = download_latest_release(asset, &tmp_file).await {
         show_error("Failed to download", &err.to_string());
@@ -152,7 +152,7 @@ pub async fn update() {
         return;
     }
 
-    println!("Swapping executable files");
+    debug!("Swapping executable files");
 
     tokio::fs::rename(&path, &tmp_old)
         .await

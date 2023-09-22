@@ -1,8 +1,17 @@
+use crate::{
+    config::{write_config_file, ClientConfig},
+    constants::{APP_VERSION, MIN_SERVER_VERSION, SERVER_IDENT},
+};
+use hyper::{
+    header::{ACCEPT, USER_AGENT},
+    StatusCode,
+};
+use log::error;
+use reqwest::Client;
+use semver::Version;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::sync::RwLock;
-
-use crate::config::{write_config_file, ClientConfig};
 
 /// Shared target location
 pub static TARGET: RwLock<Option<LookupData>> = RwLock::const_new(None);
@@ -12,9 +21,10 @@ pub static TARGET: RwLock<Option<LookupData>> = RwLock::const_new(None);
 #[derive(Deserialize)]
 struct ServerDetails {
     /// The Pocket Relay version of the server
-    version: String,
-    /// Server identifier
-    ident: String,
+    version: Version,
+    /// Server identifier checked to ensure its a proper server
+    #[serde(default)]
+    ident: Option<String>,
 }
 
 /// Data from completing a lookup contains the resolved address
@@ -27,7 +37,7 @@ pub struct LookupData {
     /// The host address of the server
     pub host: String,
     /// The server version
-    pub version: String,
+    pub version: Version,
     /// The server port
     pub port: u16,
 }
@@ -42,8 +52,17 @@ pub enum LookupError {
     #[error("Failed to connect to server: {0}")]
     ConnectionFailed(reqwest::Error),
     /// The server gave an invalid response likely not a PR server
+    #[error("Server replied with error response: {0} {1}")]
+    ErrorResponse(StatusCode, reqwest::Error),
+    /// The server gave an invalid response likely not a PR server
     #[error("Invalid server response: {0}")]
     InvalidResponse(reqwest::Error),
+    /// Server wasn't a valid pocket relay server
+    #[error("Server identifier was incorrect (Not a PocketRelay server?)")]
+    NotPocketRelay,
+    /// Server version is too old
+    #[error("Server version is too outdated ({0}) this client requires servers of version {1} or greater")]
+    ServerOutdated(Version, Version),
 }
 
 pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
@@ -63,9 +82,36 @@ pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
 
     url.push_str("api/server");
 
-    let response = reqwest::get(url)
+    let client = Client::new();
+
+    let response = client
+        .get(url)
+        .header(ACCEPT, "application/json")
+        .header(USER_AGENT, format!("PocketRelayClient/v{}", APP_VERSION))
+        .send()
         .await
         .map_err(LookupError::ConnectionFailed)?;
+
+    #[cfg(debug_assertions)]
+    {
+        use log::debug;
+
+        debug!("Response Status: {}", response.status());
+        debug!("HTTP Version: {:?}", response.version());
+        debug!("Content Length: {:?}", response.content_length());
+        debug!("HTTP Headers: {:?}", response.headers());
+    }
+
+    let response = match response.error_for_status() {
+        Ok(value) => value,
+        Err(err) => {
+            error!("Server responded with error: {}", err);
+            return Err(LookupError::ErrorResponse(
+                err.status().unwrap_or_default(),
+                err,
+            ));
+        }
+    };
 
     let url = response.url();
     let scheme = url.scheme().to_string();
@@ -80,6 +126,18 @@ pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
         .json::<ServerDetails>()
         .await
         .map_err(LookupError::InvalidResponse)?;
+
+    // Handle invalid server ident
+    if details.ident.is_none() || details.ident.is_some_and(|value| value != SERVER_IDENT) {
+        return Err(LookupError::NotPocketRelay);
+    }
+
+    if details.version < MIN_SERVER_VERSION {
+        return Err(LookupError::ServerOutdated(
+            details.version,
+            MIN_SERVER_VERSION,
+        ));
+    }
 
     Ok(LookupData {
         scheme,

@@ -1,5 +1,5 @@
 use crate::constants::{HOSTS_PATH, HOST_KEY, HOST_VALUE};
-use log::error;
+use log::{debug, error};
 use std::{
     fs::{read_to_string, write},
     io::{self, ErrorKind},
@@ -33,6 +33,8 @@ impl HostEntryGuard {
     pub fn apply() -> Self {
         if let Err(err) = Self::apply_entry() {
             error!("Failed to apply host entry: {}", err);
+        } else {
+            debug!("Applied host modificaiton")
         }
         Self
     }
@@ -118,6 +120,8 @@ impl Drop for HostEntryGuard {
     fn drop(&mut self) {
         if let Err(err) = Self::remove_entry() {
             error!("Failed to remove host entry: {}", err);
+        } else {
+            debug!("Removed host modification")
         }
     }
 }

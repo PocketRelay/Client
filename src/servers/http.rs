@@ -5,6 +5,7 @@ use hyper::body::Body;
 use hyper::service::service_fn;
 use hyper::{server::conn::Http, Request};
 use hyper::{Response, StatusCode};
+use log::error;
 use reqwest::Client;
 use std::convert::Infallible;
 use std::{net::Ipv4Addr, process::exit};
@@ -33,7 +34,7 @@ pub async fn start_server() {
                 .serve_connection(stream, service_fn(proxy_http))
                 .await
             {
-                eprintln!("Failed to serve http connection: {:?}", err);
+                error!("Failed to serve http connection: {:?}", err);
             }
         });
     }
@@ -67,7 +68,7 @@ async fn proxy_http(req: Request<hyper::body::Body>) -> Result<Response<Body>, I
     let proxy_response = match client.get(target_url).send().await {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to send HTTP request: {:?}", err);
+            error!("Failed to send HTTP request: {:?}", err);
             let mut error_response = Response::new(hyper::Body::empty());
             *error_response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
             return Ok(error_response);
@@ -79,7 +80,7 @@ async fn proxy_http(req: Request<hyper::body::Body>) -> Result<Response<Body>, I
     let body = match proxy_response.bytes().await {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to read HTTP response body: {}", err);
+            error!("Failed to read HTTP response body: {}", err);
             let mut error_response = Response::new(hyper::Body::empty());
             *error_response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
             return Ok(error_response);

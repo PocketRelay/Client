@@ -1,14 +1,12 @@
-use std::{
-    fs::{copy, remove_file, write},
-    io,
-};
-
-use thiserror::Error;
-
 use crate::{
     constants::{BINKW23_DLL_BYTES, BINKW32_DLL_BYTES},
     ui::try_pick_game_path,
 };
+use std::{
+    fs::{copy, remove_file, write},
+    io,
+};
+use thiserror::Error;
 
 /// Errors that can occur while patching the game
 #[derive(Debug, Error)]
