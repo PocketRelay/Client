@@ -18,30 +18,34 @@ iced = ["dep:iced"]
 native = ["dep:native-windows-gui"]
 
 [dependencies]
-# Serialization and HTTP requests
 reqwest = { version = "0.11", features = ["json"] }
+blaze-ssl-async = "^0.3"
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 tdf = "0.1"
-bytes = "1.4.0"
+bytes = "1.4"
 
-# Blaze SSLv3 async TCPStream implementation
-blaze-ssl-async = "^0.3"
-
-# Native file picker dialog
-native-dialog = "0.6.3"
+# Tokio async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
 
 # Library for obtaining the local IP address of the device
 local-ip-address = "0.5"
 
-tokio-util = { version = "0.7", features = ["codec"] }
 futures = "0.3"
 thiserror = "1"
-semver = "1.0.18"
+semver = { version = "1", features = ["serde"] }
 hyper = { version = "0.14", features = ["server", "http1", "tcp", "runtime"] }
-log = "0.4.20"
-env_logger = "0.10.0"
+
+log = "0.4"
+env_logger = "0.10"
+
+# Native file picker dialog
+native-dialog = "0.6"
+# Native Windows GUI framework variant
+native-windows-gui = { version = "1", optional = true }
 
 # Iced GUI framework variant
 [dependencies.iced]
@@ -49,16 +53,6 @@ version = "0.10"
 default-features = false
 features = ["image", "tokio"]
 optional = true
-
-# Native Windows GUI framework variant
-[dependencies.native-windows-gui]
-version = "1.0.13"
-optional = true
-
-# Tokio async runtime
-[dependencies.tokio]
-version = "1"
-features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync", "fs"]
 
 [profile.release]
 strip = true
