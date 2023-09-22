@@ -1,8 +1,7 @@
 use std::{env::current_exe, path::Path, process::exit};
 
 use crate::{
-    constants::{APP_VERSION, IS_NATIVE_VERSION},
-    show_confirm, show_error, show_info,
+    constants::{APP_VERSION, IS_NATIVE_VERSION}, ui::{show_info, show_error, show_confirm},
 };
 use reqwest::header::{ACCEPT, USER_AGENT};
 use semver::Version;

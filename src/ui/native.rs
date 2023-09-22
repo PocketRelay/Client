@@ -1,6 +1,8 @@
 use crate::{
+    api::try_update_host,
+    config::ClientConfig,
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, try_patch_game, try_remove_patch, try_update_host, ClientConfig,
+    patch::{try_patch_game, try_remove_patch},
 };
 use ngw::{CheckBoxState, GridLayoutItem, Icon};
 
@@ -126,7 +128,6 @@ pub fn init(runtime: tokio::runtime::Runtime, config: Option<ClientConfig>) {
             E::OnWindowClose => {
                 if &handle == &window_handle {
                     ngw::stop_thread_dispatch();
-                    let _ = remove_host_entry();
                 }
             }
 

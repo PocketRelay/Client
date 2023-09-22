@@ -1,7 +1,8 @@
 use crate::{
+    api::{try_update_host, LookupData, LookupError},
+    config::ClientConfig,
     constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, show_error, show_info, try_patch_game, try_remove_patch, try_update_host,
-    ClientConfig, LookupData, LookupError,
+    patch::{try_patch_game, try_remove_patch},
 };
 use iced::{
     executor,
@@ -13,6 +14,8 @@ use iced::{
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
+
+use super::{show_error, show_info};
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 310);
@@ -36,12 +39,6 @@ struct App {
     lookup_result: LookupState,
     remember: bool,
     target: String,
-}
-
-impl Drop for App {
-    fn drop(&mut self) {
-        let _ = remove_host_entry();
-    }
 }
 
 /// Messages used for updating the game state

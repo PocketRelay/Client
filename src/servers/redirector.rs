@@ -1,6 +1,6 @@
 use crate::{
     constants::{MAIN_PORT, REDIRECTOR_PORT},
-    show_error,
+    ui::show_error,
 };
 
 use blaze_ssl_async::{BlazeAccept, BlazeListener};

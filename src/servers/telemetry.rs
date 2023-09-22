@@ -1,4 +1,4 @@
-use crate::{constants::TELEMETRY_PORT, show_error, TARGET};
+use crate::{api::TARGET, constants::TELEMETRY_PORT, ui::show_error};
 use reqwest::Client;
 use serde::Serialize;
 use std::{io, net::Ipv4Addr, process::exit};
