@@ -1,9 +1,4 @@
-use crate::{
-    api::TARGET,
-    constants::{PR_USER_AGENT, TELEMETRY_PORT},
-    ui::show_error,
-};
-use hyper::header::USER_AGENT;
+use crate::{api::TARGET, constants::TELEMETRY_PORT, ui::show_error};
 use reqwest::Client;
 use serde::Serialize;
 use std::{io, net::Ipv4Addr, process::exit};
@@ -15,7 +10,7 @@ use tokio::{
 /// Server API endpoint to send telemetry data to
 const TELEMETRY_ENDPOINT: &str = "/api/server/telemetry";
 
-pub async fn start_server() {
+pub async fn start_server(http_client: Client) {
     // Initializing the underlying TCP listener
     let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
         Ok(value) => value,
@@ -33,6 +28,8 @@ pub async fn start_server() {
             Err(_) => continue,
         };
 
+        let http_client = http_client.clone();
+
         tokio::spawn(async move {
             let target = match &*TARGET.read().await {
                 Some(value) => value.clone(),
@@ -45,17 +42,10 @@ pub async fn start_server() {
                 target.scheme, target.host, target.port, TELEMETRY_ENDPOINT
             );
 
-            let client = Client::new();
-
             let mut stream = stream;
             while let Ok(message) = read_message(&mut stream).await {
                 // TODO: Batch these telemetry messages and send them to the server
-                let _ = client
-                    .post(&url)
-                    .header(USER_AGENT, PR_USER_AGENT)
-                    .json(&message)
-                    .send()
-                    .await;
+                let _ = http_client.post(&url).json(&message).send().await;
             }
         });
     }

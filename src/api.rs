@@ -1,11 +1,8 @@
 use crate::{
     config::{write_config_file, ClientConfig},
-    constants::{MIN_SERVER_VERSION, PR_USER_AGENT, SERVER_IDENT},
+    constants::{MIN_SERVER_VERSION, SERVER_IDENT},
 };
-use hyper::{
-    header::{ACCEPT, USER_AGENT},
-    StatusCode,
-};
+use hyper::{header::ACCEPT, StatusCode};
 use log::error;
 use reqwest::Client;
 use semver::Version;
@@ -65,7 +62,7 @@ pub enum LookupError {
     ServerOutdated(Version, Version),
 }
 
-pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
+pub async fn try_lookup_host(client: Client, host: &str) -> Result<LookupData, LookupError> {
     let mut url = String::new();
 
     // Fill in missing host portion
@@ -82,12 +79,9 @@ pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
 
     url.push_str("api/server");
 
-    let client = Client::new();
-
     let response = client
         .get(url)
         .header(ACCEPT, "application/json")
-        .header(USER_AGENT, PR_USER_AGENT)
         .send()
         .await
         .map_err(LookupError::ConnectionFailed)?;
@@ -152,8 +146,12 @@ pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
 /// target before returning the result
 ///
 /// `target` The target to use
-pub async fn try_update_host(target: String, persist: bool) -> Result<LookupData, LookupError> {
-    let result = try_lookup_host(&target).await?;
+pub async fn try_update_host(
+    client: Client,
+    target: String,
+    persist: bool,
+) -> Result<LookupData, LookupError> {
+    let result = try_lookup_host(client, &target).await?;
     let mut write = TARGET.write().await;
     *write = Some(result.clone());
 

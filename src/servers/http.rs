@@ -1,8 +1,7 @@
 use crate::api::TARGET;
-use crate::constants::{HTTP_PORT, PR_USER_AGENT};
+use crate::constants::HTTP_PORT;
 use crate::ui::show_error;
 use hyper::body::Body;
-use hyper::header::USER_AGENT;
 use hyper::service::service_fn;
 use hyper::{server::conn::Http, Request};
 use hyper::{Response, StatusCode};
@@ -12,7 +11,7 @@ use std::convert::Infallible;
 use std::{net::Ipv4Addr, process::exit};
 use tokio::net::TcpListener;
 
-pub async fn start_server() {
+pub async fn start_server(http_client: Client) {
     // Initializing the underlying TCP listener
     let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, HTTP_PORT)).await {
         Ok(value) => value,
@@ -30,9 +29,14 @@ pub async fn start_server() {
             Err(_) => break,
         };
 
+        let http_client = http_client.clone();
+
         tokio::task::spawn(async move {
             if let Err(err) = Http::new()
-                .serve_connection(stream, service_fn(proxy_http))
+                .serve_connection(
+                    stream,
+                    service_fn(move |req| proxy_http(req, http_client.clone())),
+                )
                 .await
             {
                 error!("Failed to serve http connection: {:?}", err);
@@ -41,7 +45,7 @@ pub async fn start_server() {
     }
 }
 
-async fn proxy_http(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+async fn proxy_http(req: Request<Body>, http_client: Client) -> Result<Response<Body>, Infallible> {
     // Get the path and query segement from the URL
     let path = req
         .uri()
@@ -68,7 +72,7 @@ async fn proxy_http(req: Request<Body>) -> Result<Response<Body>, Infallible> {
         )
     };
 
-    let response = match proxy_request(target_url).await {
+    let response = match proxy_request(http_client, target_url).await {
         Ok(value) => value,
         Err(err) => {
             error!("Failed to proxy HTTP request: {}", err);
@@ -84,14 +88,11 @@ async fn proxy_http(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
 /// Makes the proxy request to the target url provided, creating
 /// a response on success or providing an error.
-async fn proxy_request(target_url: String) -> Result<Response<Body>, reqwest::Error> {
-    let http_client = Client::new();
-
-    let response = http_client
-        .get(target_url)
-        .header(USER_AGENT, PR_USER_AGENT)
-        .send()
-        .await?;
+async fn proxy_request(
+    http_client: Client,
+    target_url: String,
+) -> Result<Response<Body>, reqwest::Error> {
+    let response = http_client.get(target_url).send().await?;
 
     // Extract response status and headers before its consumed to load the body
     let status = response.status();

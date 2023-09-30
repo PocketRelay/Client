@@ -1,6 +1,6 @@
 use crate::{
     api::TARGET,
-    constants::{HTTP_PORT, MAIN_PORT, PR_USER_AGENT},
+    constants::{HTTP_PORT, MAIN_PORT},
     ui::show_error,
 };
 use hyper::header::HeaderName;
@@ -17,7 +17,7 @@ use tokio::{
 
 /// Starts the main server proxy. This creates a connection to the Pocket Relay
 /// which is upgraded and then used as the main connection fro the game.
-pub async fn start_server() {
+pub async fn start_server(http_client: Client) {
     // Initializing the underlying TCP listener
     let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, MAIN_PORT)).await {
         Ok(value) => value,
@@ -36,7 +36,7 @@ pub async fn start_server() {
         };
 
         // Spawn off a new handler for the connection
-        tokio::spawn(handle_blaze(stream));
+        tokio::spawn(handle_blaze(stream, http_client.clone()));
     }
 }
 
@@ -52,7 +52,7 @@ const HEADER_LOCAL_HTTP: &str = "x-pocket-relay-local-http";
 /// Endpoint for upgrading the server connection
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
 
-async fn handle_blaze(mut client: TcpStream) {
+async fn handle_blaze(mut client: TcpStream, http_client: Client) {
     let url = match &*TARGET.read().await {
         // Create the upgrade URL
         Some(target) => format!(
@@ -67,8 +67,6 @@ async fn handle_blaze(mut client: TcpStream) {
         // Required headers for HTTP upgrade
         (header::CONNECTION, HeaderValue::from_static("Upgrade")),
         (header::UPGRADE, HeaderValue::from_static("blaze")),
-        // Client user agent
-        (header::USER_AGENT, HeaderValue::from_static(PR_USER_AGENT)),
         // Legacy headers to force usage of local HTTP
         (
             HeaderName::from_static(LEGACY_HEADER_SCHEME),
@@ -91,7 +89,6 @@ async fn handle_blaze(mut client: TcpStream) {
     .into_iter()
     .collect();
 
-    let http_client = Client::new();
     let request = http_client.get(url).headers(headers);
     let response = request.send().await;
 

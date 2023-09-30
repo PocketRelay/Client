@@ -4,7 +4,9 @@
 )]
 
 use config::read_config_file;
+use constants::PR_USER_AGENT;
 use hosts::HostEntryGuard;
+use reqwest::Client;
 
 mod api;
 mod config;
@@ -25,9 +27,12 @@ async fn main() {
 
     let config = read_config_file().await;
 
-    tokio::spawn(update::update());
-    tokio::spawn(servers::start());
+    let client_builder = Client::builder().user_agent(PR_USER_AGENT);
+    let client = client_builder.build().expect("Failed to build HTTP client");
+
+    tokio::spawn(update::update(client.clone()));
+    tokio::spawn(servers::start(client.clone()));
 
     // Initialize the UI
-    ui::init(config);
+    ui::init(config, client);
 }

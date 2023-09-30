@@ -8,6 +8,7 @@ use crate::{
 use futures::FutureExt;
 use ngd::NwgUi;
 use nwg::{CheckBoxState, NativeUi};
+use reqwest::Client;
 use std::cell::RefCell;
 use tokio::task::JoinHandle;
 
@@ -98,6 +99,9 @@ pub struct App {
 
     /// Join handle for the connect task
     connect_task: RefCell<Option<JoinHandle<Result<LookupData, LookupError>>>>,
+
+    /// Http client for sending requests
+    http_client: Client,
 }
 
 impl App {
@@ -112,11 +116,11 @@ impl App {
         self.connection_label.set_text("Connecting...");
         let target = self.target_url_input.text();
         let remember = self.remember_checkbox.check_state() == CheckBoxState::Checked;
-
         let sender = self.connect_notice.sender();
+        let http_client = self.http_client.clone();
 
         let task = tokio::spawn(async move {
-            let result = try_update_host(target, remember).await;
+            let result = try_update_host(http_client, target, remember).await;
             sender.notice();
             result
         });
@@ -187,20 +191,22 @@ impl App {
     }
 }
 
-pub fn init(config: Option<ClientConfig>) {
+pub fn init(config: Option<ClientConfig>, client: Client) {
     nwg::init().expect("Failed to initialize native UI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
 
-    let test = App::build_ui(Default::default()).expect("Failed to build native UI");
+    let mut app = App::default();
+    app.http_client = client;
+    let app = App::build_ui(app).expect("Failed to build native UI");
 
     let (target, remember) = config
         .map(|value| (value.connection_url, true))
         .unwrap_or_default();
 
-    test.target_url_input.set_text(&target);
+    app.target_url_input.set_text(&target);
 
     if remember {
-        test.remember_checkbox
+        app.remember_checkbox
             .set_check_state(CheckBoxState::Checked);
     }
 

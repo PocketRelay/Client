@@ -14,13 +14,14 @@ use iced::{
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
+use reqwest::Client;
 
 use super::{show_error, show_info};
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 310);
 
-pub fn init(config: Option<ClientConfig>) {
+pub fn init(config: Option<ClientConfig>, client: Client) {
     App::run(Settings {
         window: window::Settings {
             icon: icon::from_file_data(ICON_BYTES, None).ok(),
@@ -29,7 +30,7 @@ pub fn init(config: Option<ClientConfig>) {
 
             ..window::Settings::default()
         },
-        flags: config,
+        flags: (config, client),
         ..Settings::default()
     })
     .unwrap();
@@ -39,6 +40,7 @@ struct App {
     lookup_result: LookupState,
     remember: bool,
     target: String,
+    http_client: Client,
 }
 
 /// Messages used for updating the game state
@@ -74,11 +76,12 @@ enum LookupState {
 impl Application for App {
     type Message = AppMessage;
     type Executor = executor::Default;
-    type Flags = Option<ClientConfig>;
+    type Flags = (Option<ClientConfig>, Client);
     type Theme = Theme;
 
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let (target, remember) = flags
+        let (config, http_client) = flags;
+        let (target, remember) = config
             .map(|value| (value.connection_url, true))
             .unwrap_or_default();
 
@@ -87,6 +90,7 @@ impl Application for App {
                 lookup_result: LookupState::None,
                 target,
                 remember,
+                http_client,
             },
             Command::none(),
         )
@@ -121,7 +125,10 @@ impl Application for App {
                 };
 
                 // Perform the async lookup with the callback
-                return Command::perform(try_update_host(target, self.remember), post_lookup);
+                return Command::perform(
+                    try_update_host(self.http_client.clone(), target, self.remember),
+                    post_lookup,
+                );
             }
             // Patching
             AppMessage::PatchGame => match try_patch_game() {

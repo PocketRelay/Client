@@ -1,4 +1,5 @@
 use native_dialog::{FileDialog, MessageDialog};
+use reqwest::Client;
 use std::path::PathBuf;
 
 use crate::config::ClientConfig;
@@ -13,14 +14,14 @@ pub mod native;
 /// Wrapper around the init functions for the different
 /// UI variants based on the enabled features
 #[inline(always)]
-pub fn init(config: Option<ClientConfig>) {
+pub fn init(config: Option<ClientConfig>, client: Client) {
     #[cfg(feature = "iced")]
     {
-        iced::init(config)
+        iced::init(config, client)
     }
     #[cfg(feature = "native")]
     {
-        native::init(config)
+        native::init(config, client)
     }
 }
 

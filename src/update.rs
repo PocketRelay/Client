@@ -1,11 +1,11 @@
 //! Updater module for providing auto-updating functionality
 
 use crate::{
-    constants::{APP_VERSION, IS_NATIVE_VERSION, PR_USER_AGENT},
+    constants::{APP_VERSION, IS_NATIVE_VERSION},
     ui::{show_confirm, show_error, show_info},
 };
 use log::{debug, error};
-use reqwest::header::{ACCEPT, USER_AGENT};
+use reqwest::{header::ACCEPT, Client};
 use semver::Version;
 use serde::Deserialize;
 use std::{env::current_exe, path::Path, process::exit};
@@ -35,13 +35,10 @@ pub struct GitHubReleaseAsset {
 }
 
 /// Attempts to obtain the latest release from github
-pub async fn get_latest_release() -> Result<GitHubRelease, reqwest::Error> {
-    let client = reqwest::Client::new();
-
+pub async fn get_latest_release(client: &Client) -> Result<GitHubRelease, reqwest::Error> {
     client
         .get("https://api.github.com/repos/PocketRelay/Client/releases/latest")
         .header(ACCEPT, "application/json")
-        .header(USER_AGENT, PR_USER_AGENT)
         .send()
         .await?
         .json()
@@ -51,13 +48,12 @@ pub async fn get_latest_release() -> Result<GitHubRelease, reqwest::Error> {
 /// Attempts to download the latest release executable and
 /// write it to the provided path
 pub async fn download_latest_release(
+    client: &Client,
     asset: &GitHubReleaseAsset,
     path: &Path,
 ) -> Result<(), reqwest::Error> {
-    let client = reqwest::Client::new();
     let bytes = client
         .get(&asset.browser_download_url)
-        .header(USER_AGENT, PR_USER_AGENT)
         .send()
         .await?
         .bytes()
@@ -70,9 +66,9 @@ pub async fn download_latest_release(
 }
 
 /// Handles the updating process
-pub async fn update() {
+pub async fn update(client: Client) {
     debug!("Checking for updates");
-    let latest_release = match get_latest_release().await {
+    let latest_release = match get_latest_release(&client).await {
         Ok(value) => value,
         Err(err) => {
             error!("Failed to fetch latest release: {}", err);
@@ -146,7 +142,7 @@ pub async fn update() {
 
     debug!("Downloading release");
 
-    if let Err(err) = download_latest_release(asset, &tmp_file).await {
+    if let Err(err) = download_latest_release(&client, asset, &tmp_file).await {
         show_error("Failed to download", &err.to_string());
         if tmp_file.exists() {
             let _ = tokio::fs::remove_file(tmp_file).await;
