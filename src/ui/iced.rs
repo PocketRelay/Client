@@ -1,7 +1,7 @@
 use crate::{
     api::{try_update_host, LookupData, LookupError},
     config::ClientConfig,
-    constants::{APP_VERSION, ICON_BYTES},
+    constants::{ICON_BYTES, WINDOW_TITLE},
     patch::{try_patch_game, try_remove_patch},
 };
 use iced::{
