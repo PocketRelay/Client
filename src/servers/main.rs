@@ -1,4 +1,10 @@
-use crate::{api::TARGET, constants::MAIN_PORT, ui::show_error};
+use crate::{
+    api::TARGET,
+    constants::{HTTP_PORT, MAIN_PORT},
+    ui::show_error,
+};
+use hyper::header::HeaderName;
+use log::error;
 use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     Client,
@@ -35,13 +41,13 @@ pub async fn start_server() {
 }
 
 /// Header for the Pocket Relay connection scheme used by the client
-const HEADER_SCHEME: &str = "X-Pocket-Relay-Scheme";
+const LEGACY_HEADER_SCHEME: HeaderName = HeaderName::from_static("X-Pocket-Relay-Scheme");
 /// Header for the Pocket Relay connection port used by the client
-const HEADER_PORT: &str = "X-Pocket-Relay-Port";
+const LEGACY_HEADER_PORT: HeaderName = HeaderName::from_static("X-Pocket-Relay-Port");
 /// Header for the Pocket Relay connection host used by the client
-const HEADER_HOST: &str = "X-Pocket-Relay-Host";
+const LEGACY_HEADER_HOST: HeaderName = HeaderName::from_static("X-Pocket-Relay-Host");
 /// Header to tell the server to use local HTTP
-const HEADER_LOCAL_HTTP: &str = "X-Pocket-Relay-Local-Http";
+const HEADER_LOCAL_HTTP: HeaderName = HeaderName::from_static("X-Pocket-Relay-Local-Http");
 
 /// Endpoint for upgrading the server connection
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
@@ -58,40 +64,49 @@ async fn handle_blaze(mut client: TcpStream) {
         target.scheme, target.host, target.port, UPGRADE_ENDPOINT
     );
 
-    // Create the HTTP Upgrade headers
-    let mut headers = HeaderMap::new();
-    headers.insert(header::CONNECTION, HeaderValue::from_static("Upgrade"));
-    headers.insert(header::UPGRADE, HeaderValue::from_static("blaze"));
+    // Create the required headers
+    let headers: HeaderMap<HeaderValue> = [
+        // Required headers for HTTP upgrade
+        (header::CONNECTION, HeaderValue::from_static("Upgrade")),
+        (header::UPGRADE, HeaderValue::from_static("blaze")),
+        // Legacy headers to force usage of local HTTP
+        (LEGACY_HEADER_SCHEME, HeaderValue::from_static("http")),
+        (LEGACY_HEADER_HOST, HeaderValue::from_static("127.0.0.1")),
+        (LEGACY_HEADER_PORT, HeaderValue::from(HTTP_PORT)),
+        // Header informing server to use local http (Legacy servers)
+        (HEADER_LOCAL_HTTP, HeaderValue::from_static("true")),
+    ]
+    .into_iter()
+    .collect();
 
-    // Append the schema header
-    if let Ok(scheme_value) = HeaderValue::from_str(&target.scheme) {
-        headers.insert(HEADER_SCHEME, scheme_value);
-    }
+    let http_client = Client::new();
+    let request = http_client.get(url).headers(headers);
+    let response = request.send().await;
 
-    // Append the port header
-    headers.insert(HEADER_PORT, HeaderValue::from(target.port));
-
-    // Append the host header
-    if let Ok(host_value) = HeaderValue::from_str(&target.host) {
-        headers.insert(HEADER_HOST, host_value);
-    }
-
-    // Append use local http header
-    headers.insert(HEADER_LOCAL_HTTP, HeaderValue::from_static("true"));
-
-    // Create the request
-    let request = Client::new().get(url).headers(headers).send();
-
-    // Await the server response to the request
-    let response = match request.await {
+    let response = match response {
         Ok(value) => value,
-        Err(_) => return,
+        Err(err) => {
+            error!("Failed to upgrade client (err connect): {}", err);
+            return;
+        }
     };
 
-    // Server connection gained through upgrading the client
+    // Handle error responses
+    let response = match response.error_for_status() {
+        Ok(response) => response,
+        Err(err) => {
+            error!("Failed to upgrade client (err response): {}", err);
+            return;
+        }
+    };
+
+    // Upgrade the connection to a stream
     let mut server = match response.upgrade().await {
         Ok(value) => value,
-        Err(_) => return,
+        Err(err) => {
+            error!("Failed to upgrade client (upgrade): {}", err);
+            return;
+        }
     };
 
     // Copy the data between the connection
