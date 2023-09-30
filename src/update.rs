@@ -1,12 +1,14 @@
-use std::{env::current_exe, path::Path, process::exit};
+//! Updater module for providing auto-updating functionality
 
 use crate::{
     constants::{APP_VERSION, IS_NATIVE_VERSION},
-    show_confirm, show_error, show_info,
+    ui::{show_confirm, show_error, show_info},
 };
-use reqwest::header::{ACCEPT, USER_AGENT};
+use log::{debug, error};
+use reqwest::{header::ACCEPT, Client};
 use semver::Version;
 use serde::Deserialize;
+use std::{env::current_exe, path::Path, process::exit};
 
 /// Structure for https://api.github.com/repos/PocketRelay/Client/releases/latest
 /// (Only the required parts)
@@ -33,13 +35,10 @@ pub struct GitHubReleaseAsset {
 }
 
 /// Attempts to obtain the latest release from github
-pub async fn get_latest_release() -> Result<GitHubRelease, reqwest::Error> {
-    let client = reqwest::Client::new();
-
+pub async fn get_latest_release(client: &Client) -> Result<GitHubRelease, reqwest::Error> {
     client
         .get("https://api.github.com/repos/PocketRelay/Client/releases/latest")
         .header(ACCEPT, "application/json")
-        .header(USER_AGENT, format!("Pocket Relay Client/{}", APP_VERSION))
         .send()
         .await?
         .json()
@@ -49,13 +48,12 @@ pub async fn get_latest_release() -> Result<GitHubRelease, reqwest::Error> {
 /// Attempts to download the latest release executable and
 /// write it to the provided path
 pub async fn download_latest_release(
+    client: &Client,
     asset: &GitHubReleaseAsset,
     path: &Path,
 ) -> Result<(), reqwest::Error> {
-    let client = reqwest::Client::new();
     let bytes = client
         .get(&asset.browser_download_url)
-        .header(USER_AGENT, format!("Pocket Relay Client/{}", APP_VERSION))
         .send()
         .await?
         .bytes()
@@ -68,12 +66,12 @@ pub async fn download_latest_release(
 }
 
 /// Handles the updating process
-pub async fn update() {
-    println!("Checking for updates");
-    let latest_release = match get_latest_release().await {
+pub async fn update(client: Client) {
+    debug!("Checking for updates");
+    let latest_release = match get_latest_release(&client).await {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to fetch latest release: {}", err);
+            error!("Failed to fetch latest release: {}", err);
             return;
         }
     };
@@ -86,7 +84,7 @@ pub async fn update() {
     let latest_version = match Version::parse(latest_tag) {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("Failed to parse version of latest release: {}", err);
+            error!("Failed to parse version of latest release: {}", err);
             return;
         }
     };
@@ -95,15 +93,15 @@ pub async fn update() {
 
     if latest_version <= current_version {
         if current_version > latest_version {
-            println!("Future release is installed ({})", current_version);
+            debug!("Future release is installed ({})", current_version);
         } else {
-            println!("Latest version is installed ({})", current_version);
+            debug!("Latest version is installed ({})", current_version);
         }
 
         return;
     }
 
-    println!("New version is available ({})", latest_version);
+    debug!("New version is available ({})", latest_version);
 
     let asset_name = if IS_NATIVE_VERSION {
         "pocket-relay-client-native.exe"
@@ -118,7 +116,7 @@ pub async fn update() {
     {
         Some(value) => value,
         None => {
-            eprintln!("Server release is missing the desired binary, cannot update");
+            error!("Server release is missing the desired binary, cannot update");
             return;
         }
     };
@@ -127,7 +125,7 @@ pub async fn update() {
         "There is a new version of the client available, would you like to update automatically?\n\n\
         Your version: v{}\n\
         Latest Version: v{}\n",
-        current_version, latest_version, 
+        current_version, latest_version,
     );
 
     let confirm = show_confirm("New version is available", &msg);
@@ -142,9 +140,9 @@ pub async fn update() {
     let tmp_file = parent.join("pocket-relay-client.exe.tmp-download");
     let tmp_old = parent.join("pocket-relay-client.exe.tmp-old");
 
-    println!("Downloading release");
+    debug!("Downloading release");
 
-    if let Err(err) = download_latest_release(asset, &tmp_file).await {
+    if let Err(err) = download_latest_release(&client, asset, &tmp_file).await {
         show_error("Failed to download", &err.to_string());
         if tmp_file.exists() {
             let _ = tokio::fs::remove_file(tmp_file).await;
@@ -153,7 +151,7 @@ pub async fn update() {
         return;
     }
 
-    println!("Swapping executable files");
+    debug!("Swapping executable files");
 
     tokio::fs::rename(&path, &tmp_old)
         .await

@@ -1,4 +1,4 @@
-use crate::{constants::TELEMETRY_PORT, show_error, TARGET};
+use crate::{api::TARGET, constants::TELEMETRY_PORT, ui::show_error};
 use reqwest::Client;
 use serde::Serialize;
 use std::{io, net::Ipv4Addr, process::exit};
@@ -10,7 +10,7 @@ use tokio::{
 /// Server API endpoint to send telemetry data to
 const TELEMETRY_ENDPOINT: &str = "/api/server/telemetry";
 
-pub async fn start_server() {
+pub async fn start_server(http_client: Client) {
     // Initializing the underlying TCP listener
     let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, TELEMETRY_PORT)).await {
         Ok(value) => value,
@@ -28,6 +28,8 @@ pub async fn start_server() {
             Err(_) => continue,
         };
 
+        let http_client = http_client.clone();
+
         tokio::spawn(async move {
             let target = match &*TARGET.read().await {
                 Some(value) => value.clone(),
@@ -40,13 +42,10 @@ pub async fn start_server() {
                 target.scheme, target.host, target.port, TELEMETRY_ENDPOINT
             );
 
-            let client = Client::new();
-
             let mut stream = stream;
             while let Ok(message) = read_message(&mut stream).await {
-                let message: TelemetryMessage = decode_message(message);
                 // TODO: Batch these telemetry messages and send them to the server
-                let _ = client.post(&url).json(&message).send().await;
+                let _ = http_client.post(&url).json(&message).send().await;
             }
         });
     }
@@ -56,7 +55,7 @@ pub async fn start_server() {
 /// stream returning the buffer that was read.
 ///
 /// `stream` The stream to read from
-async fn read_message(stream: &mut TcpStream) -> io::Result<Vec<u8>> {
+async fn read_message(stream: &mut TcpStream) -> io::Result<TelemetryMessage> {
     let length = {
         // Buffer for reading the header + padding + legnth bytes
         let mut header = [0u8; 12];
@@ -72,7 +71,9 @@ async fn read_message(stream: &mut TcpStream) -> io::Result<Vec<u8>> {
     // Create a new buffer of the expected size
     let mut buffer = vec![0u8; length];
     stream.read_exact(&mut buffer).await?;
-    Ok(buffer)
+
+    let message = decode_message(buffer);
+    Ok(message)
 }
 
 // Structure containing key value pairs for telemetry messages
@@ -82,67 +83,114 @@ pub struct TelemetryMessage {
     pub values: Vec<(String, String)>,
 }
 
+/// TLM3 key for decoding the TML3 line
+const TLM3_KEY: &[u8] = b"The truth is back in style.";
+
 /// Decodes the telemetry message from the message buffer into
 /// a telemetry message structure
 ///
 /// `message` The raw message bytes
-fn decode_message(mut message: Vec<u8>) -> TelemetryMessage {
+fn decode_message(message: Vec<u8>) -> TelemetryMessage {
     // Split the buffer into pairs of values
-    let pairs = message
-        .split_mut(|value| b'\n'.eq(value))
-        .filter_map(|slice| split_at_byte(slice, b'='));
+    let values: Vec<(String, String)> = message
+        // Split the message into new lines
+        .split(|value| b'\n'.eq(value))
+        // Filter only on the key=value pair lines
+        .filter_map(|slice| {
+            let mut parts = slice.splitn(2, |value| b'='.eq(value));
+            let first = parts.next()?;
+            let second = parts.next()?;
+            Some((first, second))
+        })
+        // Handle decoding the values
+        .map(|(key, value)| {
+            let key = String::from_utf8_lossy(key).to_string();
+            let value = if key.eq("TLM3") {
+                tlm3(value)
+            } else {
+                format!("{:?}", value)
+            };
 
-    let mut values = Vec::new();
-
-    for (key, value) in pairs {
-        let key = String::from_utf8_lossy(key);
-        let value = if key.eq("TLM3") {
-            decode_tlm3(value)
-        } else {
-            format!("{:?}", value)
-        };
-        values.push((key.to_string(), value))
-    }
+            (key, value)
+        })
+        .collect();
 
     TelemetryMessage { values }
 }
 
-/// TLM3 key for decoding the TML3 line
-const TLM3_KEY: &[u8] = b"The truth is back in style.";
-
-/// Splits the provided bytes slice at the first of the provided
-/// byte returning None if there was no match and a slice before
-/// and after if there is one
-///
-/// `value` The slice to split
-/// `split` The byte to split at
-fn split_at_byte(value: &mut [u8], split: u8) -> Option<(&mut [u8], &mut [u8])> {
-    let mut parts = value.splitn_mut(2, |value| split.eq(value));
-    let first = parts.next()?;
-    let second = parts.next()?;
-    Some((first, second))
+fn tlm3(input: &[u8]) -> String {
+    input
+        .splitn(2, |value| b'-'.eq(value))
+        .nth(1)
+        .map(|line| {
+            let value = xor_cipher(line, TLM3_KEY);
+            // Safety: Characters from the xor_cipher are within the valid utf-8 range
+            unsafe { String::from_utf8_unchecked(value) }
+        })
+        .unwrap_or_else(|| format!("{:?}", input))
 }
 
-/// Decodes a TLM3 line from the provided slice. Decodes in place
-/// using a mutable slice of the value
-///
-/// `slice` The slice to decode from
-fn decode_tlm3(slice: &mut [u8]) -> String {
-    if let Some((_, line)) = split_at_byte(slice, b'-') {
-        let mut out = String::new();
-        for i in 0..line.len() {
-            let value = line[i];
-            let key_value = TLM3_KEY[i % TLM3_KEY.len()];
+fn xor_cipher(input: &[u8], key: &[u8]) -> Vec<u8> {
+    input
+        .iter()
+        // Copy the data bytes
+        .copied()
+        // Iterate along-side the key
+        .zip(key.iter().cycle().copied())
+        // Process the next value using the key
+        .map(|(data, key)| ((data ^ key) % 0x80))
+        // Collect the processed bytes
+        .collect()
+}
 
-            let char = if (value ^ key_value) <= 0x80 {
-                value ^ key_value
-            } else {
-                key_value ^ (value - 0x80)
-            } as char;
-            out.push(char);
-        }
-        out
-    } else {
-        format!("{slice:?}")
+#[cfg(test)]
+mod test {
+    use crate::servers::telemetry::tlm3;
+
+    use super::{xor_cipher, TLM3_KEY};
+
+    #[test]
+    fn test_xor_cipher() {
+        // Data that should be decodable
+        let test_data =
+            "123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
+        let enc_data = xor_cipher(test_data.as_bytes(), TLM3_KEY);
+        let dec_data = xor_cipher(&enc_data, TLM3_KEY);
+
+        assert_eq!(&dec_data, test_data.as_bytes());
+    }
+
+    #[test]
+    fn test_known_data() {
+        let enc_data = &[
+            100, 88, 85, 144, 68, 64, 49, 50, 71, 141, 82, 67, 144, 82, 81, 83, 91, 146, 91, 65,
+            98, 60, 59, 45, 67, 54, 107, 135, 59, 74, 111, 56, 60, 50, 91, 30, 76, 135, 148, 29,
+            43, 47, 55, 77, 84, 133, 128, 71, 78, 189, 55, 56, 73, 30, 100, 88, 85, 144, 70, 54,
+            51, 91, 69, 27, 89, 67, 144, 82, 81, 83, 89, 147, 70, 33, 110, 63, 58, 86, 46, 41, 111,
+            142, 71, 33, 99, 59, 60, 90, 22, 141, 82, 27, 78, 141, 80, 80, 87, 93, 22, 90, 95, 22,
+            75, 68, 95, 138, 22, 90, 53, 85, 84, 145, 82, 134, 134, 128, 137, 29, 90, 85, 83, 135,
+            146, 144, 86, 80, 138, 25, 68, 25, 128, 54, 47, 51, 94, 144, 104,
+        ];
+        let expected = "000002DF/-;00000022/BOOT/SESS/OLNG/vlng=INT&tlng=INT,000002DF/-;00000023/ONLN/BLAZ/DCON/berr=-2146631680&fsta=11&tsta=3&sess=pcwdjtOCVpD\0";
+        let dec_data = xor_cipher(enc_data, TLM3_KEY);
+
+        assert_eq!(&dec_data, expected.as_bytes());
+    }
+
+    #[test]
+    fn test_tlm3_line() {
+        let enc_data = &mut [
+            64, 56, 97, 45, 100, 88, 85, 144, 68, 64, 49, 50, 71, 141, 82, 67, 144, 82, 81, 83, 91,
+            146, 91, 65, 98, 60, 59, 45, 67, 54, 107, 135, 59, 74, 111, 56, 60, 50, 91, 30, 76,
+            135, 148, 29, 43, 47, 55, 77, 84, 133, 128, 71, 78, 189, 55, 56, 73, 30, 100, 88, 85,
+            144, 70, 54, 51, 91, 69, 27, 89, 67, 144, 82, 81, 83, 89, 147, 70, 33, 110, 63, 58, 86,
+            46, 41, 111, 142, 71, 33, 99, 59, 60, 90, 22, 141, 82, 27, 78, 141, 80, 80, 87, 93, 22,
+            90, 95, 22, 75, 68, 95, 138, 22, 90, 53, 85, 84, 145, 82, 134, 134, 128, 137, 29, 90,
+            85, 83, 135, 146, 144, 86, 80, 138, 25, 68, 25, 128, 54, 47, 51, 94, 144, 104,
+        ];
+        let expected = "000002DF/-;00000022/BOOT/SESS/OLNG/vlng=INT&tlng=INT,000002DF/-;00000023/ONLN/BLAZ/DCON/berr=-2146631680&fsta=11&tsta=3&sess=pcwdjtOCVpD\0";
+        let dec_data = tlm3(enc_data);
+        assert_eq!(dec_data.as_bytes(), expected.as_bytes());
     }
 }

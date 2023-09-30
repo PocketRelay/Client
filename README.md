@@ -17,8 +17,7 @@ For a guide on using this program see the guide [Here](https://pocket-relay.page
 
 This tool uses the system hosts file at `C:/Windows/System32/drivers/etc/hosts` and adds
 `127.0.0.1 gosredirector.ea.com` which tells your computer to send all the traffic that
-would normally go to `gosredirector.ea.com` to the host that you provide through the
-connection string 
+would normally go to `gosredirector.ea.com` to your local computer where its then instead handled by the client tool
 
 ## 🔌 Credits
 
@@ -33,7 +32,7 @@ produced from studying the protocol of the official servers and emulating its fu
 
 The MIT License (MIT)
 
-Copyright (c) 2022 Jacobtread
+Copyright (c) 2022 - 2023 Jacobtread
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

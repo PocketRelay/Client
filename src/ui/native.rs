@@ -1,202 +1,214 @@
+use super::{show_error, show_info};
 use crate::{
-    constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, try_patch_game, try_remove_patch, try_update_host, ClientConfig,
+    api::{try_update_host, LookupData, LookupError},
+    config::ClientConfig,
+    constants::{ICON_BYTES, WINDOW_TITLE},
+    patch::{try_patch_game, try_remove_patch},
 };
-use ngw::{CheckBoxState, GridLayoutItem, Icon};
+use futures::FutureExt;
+use ngd::NwgUi;
+use nwg::{CheckBoxState, NativeUi};
+use reqwest::Client;
+use std::cell::RefCell;
+use tokio::task::JoinHandle;
 
-extern crate native_windows_gui as ngw;
+extern crate native_windows_derive as ngd;
+extern crate native_windows_gui as nwg;
 
-pub const WINDOW_SIZE: (i32, i32) = (500, 300);
+pub const WINDOW_SIZE: (i32, i32) = (500, 280);
 
-pub fn init(runtime: tokio::runtime::Runtime, config: Option<ClientConfig>) {
-    ngw::init().expect("Failed to initialize native UI");
-    ngw::Font::set_global_family("Segoe UI").expect("Failed to set default font");
+#[derive(NwgUi, Default)]
+pub struct App {
+    /// Window Icon
+    #[nwg_resource(source_bin: Some(ICON_BYTES))]
+    icon: nwg::Icon,
+
+    /// App window
+    #[nwg_control(
+        size: WINDOW_SIZE,
+        position: (5, 5),
+        icon: Some(&data.icon),
+        title: WINDOW_TITLE,
+        flags: "WINDOW|VISIBLE|MINIMIZE_BOX"
+    )]
+    #[nwg_events(OnWindowClose: [nwg::stop_thread_dispatch()])]
+    window: nwg::Window,
+
+    /// Grid layout for all the content
+    #[nwg_layout(parent: window)]
+    grid: nwg::GridLayout,
+
+    /// Label for the connection URL input
+    #[nwg_control(text: "Please put the server Connection URL below and press 'Set'")]
+    #[nwg_layout_item(layout: grid, col: 0, row: 0, col_span: 2)]
+    target_url_label: nwg::Label,
+
+    /// Input for the connection URL
+    #[nwg_control(focus: true)]
+    #[nwg_layout_item(layout: grid, col: 0, row: 1, col_span: 2)]
+    target_url_input: nwg::TextInput,
+
+    /// Button for connecting
+    #[nwg_control(text: "Set")]
+    #[nwg_layout_item(layout: grid, col: 2, row: 1, col_span: 1)]
+    #[nwg_events(OnButtonClick: [App::handle_set])]
+    set_button: nwg::Button,
+
+    /// Checkbox for whether to remember the connection URL
+    #[nwg_control(text: "Save connection URL")]
+    #[nwg_layout_item(layout: grid, col: 0, row: 2, col_span: 3)]
+    remember_checkbox: nwg::CheckBox,
+
+    /// Connection state label
+    #[nwg_control(text: "Not connected")]
+    #[nwg_layout_item(layout: grid, col: 0, row: 3, col_span: 3)]
+    connection_label: nwg::Label,
+
+    /// Label telling the player to keep the program running
+    #[nwg_control(
+        text: "You must keep this program running while playing. Closing this \n\
+        program will cause you to connect to the official servers instead."
+    )]
+    #[nwg_layout_item(layout: grid, col: 0, row: 4, col_span: 3)]
+    keep_running_label: nwg::Label,
+
+    /// Button to patch the game
+    #[nwg_control(text: "Patch Game")]
+    #[nwg_layout_item(layout: grid, col: 0, row: 5, col_span: 1)]
+    #[nwg_events(OnButtonClick: [App::handle_patch])]
+    patch_button: nwg::Button,
+
+    /// Button to remove the patch from the game
+    #[nwg_control(text: "Remove Patch")]
+    #[nwg_layout_item(layout: grid, col: 1, row: 5, col_span: 1)]
+    #[nwg_events(OnButtonClick: [App::handle_remove_patch])]
+    remove_patch_button: nwg::Button,
+
+    /// Label telling they player to patch their game
+    #[nwg_control(
+        text: "You must patch your game in order to make it compatible with\n\
+        Pocket Relay"
+    )]
+    #[nwg_layout_item(layout: grid, col: 0, row: 6, col_span: 3)]
+    patch_label: nwg::Label,
+
+    /// Notice for connection completion
+    #[nwg_control]
+    #[nwg_events(OnNotice: [App::handle_connect_notice])]
+    connect_notice: nwg::Notice,
+
+    /// Join handle for the connect task
+    connect_task: RefCell<Option<JoinHandle<Result<LookupData, LookupError>>>>,
+
+    /// Http client for sending requests
+    http_client: Client,
+}
+
+impl App {
+    /// Handles the "Set" button being pressed, dispatches a connect task
+    /// that will wake up the App with `App::handle_connect_notice` to
+    /// handle the connection result.
+    fn handle_set(&self) {
+        if let Some(task) = self.connect_task.take() {
+            task.abort();
+        }
+
+        self.connection_label.set_text("Connecting...");
+        let target = self.target_url_input.text();
+        let remember = self.remember_checkbox.check_state() == CheckBoxState::Checked;
+        let sender = self.connect_notice.sender();
+        let http_client = self.http_client.clone();
+
+        let task = tokio::spawn(async move {
+            let result = try_update_host(http_client, target, remember).await;
+            sender.notice();
+            result
+        });
+
+        *self.connect_task.borrow_mut() = Some(task);
+    }
+
+    /// Handles the "Patch Game" button being pressed. Prompts the user to
+    /// patch the game
+    fn handle_patch(&self) {
+        match try_patch_game() {
+            Ok(true) => {
+                show_info("Game patched", "Sucessfully patched game");
+            }
+            Ok(false) => {}
+            Err(err) => {
+                show_error("Failed to patch game", &err.to_string());
+            }
+        }
+    }
+
+    /// Handles the "Remove Patch" button being pressed. Prompts the user to
+    /// remove the patch from the game
+    fn handle_remove_patch(&self) {
+        match try_remove_patch() {
+            Ok(true) => {
+                show_info("Patch removed", "Sucessfully removed patch");
+            }
+            Ok(false) => {}
+            Err(err) => {
+                show_error("Failed to remove patch", &err.to_string());
+            }
+        }
+    }
+
+    /// Handles the connection complete notice updating the UI
+    /// with the new connection state from the task result
+    fn handle_connect_notice(&self) {
+        let result = self
+            .connect_task
+            .borrow_mut()
+            .take()
+            // Flatten on the join result
+            .and_then(|task| task.now_or_never())
+            // Flatten join failure errors (Out of our control)
+            .and_then(|inner| inner.ok());
+
+        let result = match result {
+            Some(value) => value,
+            None => {
+                return;
+            }
+        };
+
+        match result {
+            Ok(result) => {
+                let text = format!(
+                    "Connected: {} {} version v{}",
+                    result.scheme, result.host, result.version
+                );
+                self.connection_label.set_text(&text)
+            }
+            Err(err) => {
+                self.connection_label.set_text("Failed to connect");
+                show_error("Failed to connect", &err.to_string());
+            }
+        }
+    }
+}
+
+pub fn init(config: Option<ClientConfig>, client: Client) {
+    nwg::init().expect("Failed to initialize native UI");
+    nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
+
+    let mut app = App::default();
+    app.http_client = client;
+    let app = App::build_ui(app).expect("Failed to build native UI");
 
     let (target, remember) = config
         .map(|value| (value.connection_url, true))
         .unwrap_or_default();
 
-    let mut window = Default::default();
-    let mut target_url = Default::default();
-    let mut set_button = Default::default();
-    let mut remember_checkbox = Default::default();
-    let mut p_button = Default::default();
-    let mut pr_button = Default::default();
-    let layout = Default::default();
+    app.target_url_input.set_text(&target);
 
-    let mut top_label = Default::default();
-    let mut mid_label = Default::default();
-    let mut bot_label = Default::default();
-    let mut c_label = Default::default();
+    if remember {
+        app.remember_checkbox
+            .set_check_state(CheckBoxState::Checked);
+    }
 
-    let mut icon = Default::default();
-
-    Icon::builder()
-        .source_bin(Some(ICON_BYTES))
-        .build(&mut icon)
-        .unwrap();
-
-    // Create window
-    ngw::Window::builder()
-        .size(WINDOW_SIZE)
-        .position((5, 5))
-        .icon(Some(&icon))
-        .title(&format!("Pocket Relay Client v{}", APP_VERSION))
-        .build(&mut window)
-        .unwrap();
-
-    // Create information text
-    ngw::Label::builder()
-        .text("Please put the server Connection URL below and press 'Set'")
-        .parent(&window)
-        .build(&mut top_label)
-        .unwrap();
-    ngw::Label::builder()
-        .text("You must keep this program running while playing. Closing this \nprogram will cause you to connect to the official servers instead.")
-        .parent(&window)
-        .build(&mut mid_label)
-        .unwrap();
-    ngw::Label::builder()
-        .text("You must patch your game in order to make it compatible with\n Pocket Relay")
-        .parent(&window)
-        .build(&mut bot_label)
-        .unwrap();
-    ngw::Label::builder()
-        .text("Not connected")
-        .parent(&window)
-        .build(&mut c_label)
-        .unwrap();
-
-    // Create the url input and set button
-    ngw::TextInput::builder()
-        .text(&target)
-        .focus(true)
-        .parent(&window)
-        .build(&mut target_url)
-        .unwrap();
-    ngw::Button::builder()
-        .text("Set")
-        .parent(&window)
-        .build(&mut set_button)
-        .unwrap();
-    ngw::CheckBox::builder()
-        .text("Save connection URL")
-        .check_state(if remember {
-            CheckBoxState::Checked
-        } else {
-            CheckBoxState::Unchecked
-        })
-        .parent(&window)
-        .build(&mut remember_checkbox)
-        .unwrap();
-
-    // Create the patch buttons
-    ngw::Button::builder()
-        .text("Patch Game")
-        .parent(&window)
-        .build(&mut p_button)
-        .unwrap();
-    ngw::Button::builder()
-        .text("Remove Patch")
-        .parent(&window)
-        .build(&mut pr_button)
-        .unwrap();
-
-    // Create the layout grid for the UI
-    ngw::GridLayout::builder()
-        .parent(&window)
-        .child_item(GridLayoutItem::new(&top_label, 0, 0, 2, 1))
-        .child_item(GridLayoutItem::new(&target_url, 0, 1, 2, 1))
-        .child_item(GridLayoutItem::new(&set_button, 0, 2, 2, 1))
-        .child_item(GridLayoutItem::new(&remember_checkbox, 0, 3, 2, 1))
-        .child_item(GridLayoutItem::new(&c_label, 0, 4, 2, 1))
-        .child_item(GridLayoutItem::new(&mid_label, 0, 5, 2, 1))
-        .child_item(GridLayoutItem::new(&p_button, 0, 6, 1, 1))
-        .child_item(GridLayoutItem::new(&pr_button, 1, 6, 1, 1))
-        .child_item(GridLayoutItem::new(&bot_label, 0, 7, 2, 1))
-        .build(&layout)
-        .unwrap();
-
-    let window_handle = window.handle;
-
-    let handler = ngw::full_bind_event_handler(&window_handle, move |event, _evt_data, handle| {
-        use ngw::Event as E;
-
-        match event {
-            E::OnWindowClose => {
-                if &handle == &window_handle {
-                    ngw::stop_thread_dispatch();
-                    let _ = remove_host_entry();
-                }
-            }
-
-            E::OnButtonClick => {
-                if &handle == &set_button {
-                    c_label.set_text("Loading...");
-
-                    let target = target_url.text();
-
-                    let result = runtime.block_on(try_update_host(
-                        target,
-                        remember_checkbox.check_state() == CheckBoxState::Checked,
-                    ));
-
-                    match result {
-                        Ok(value) => c_label.set_text(&format!(
-                            "Connected: {} {} version v{}",
-                            value.scheme, value.host, value.version
-                        )),
-                        Err(err) => {
-                            c_label.set_text("Failed to connect");
-                            ngw::modal_error_message(
-                                &window_handle,
-                                "Failed to connect",
-                                &err.to_string(),
-                            );
-                        }
-                    }
-                } else if &handle == &p_button {
-                    match try_patch_game() {
-                        Ok(true) => {
-                            ngw::modal_info_message(
-                                &window_handle,
-                                "Game patched",
-                                "Sucessfully patched game",
-                            );
-                        }
-                        Ok(false) => {}
-                        Err(err) => {
-                            ngw::modal_error_message(
-                                &window_handle,
-                                "Failed to patch game",
-                                &err.to_string(),
-                            );
-                        }
-                    }
-                } else if &handle == &pr_button {
-                    match try_remove_patch() {
-                        Ok(true) => {
-                            ngw::modal_info_message(
-                                &window_handle,
-                                "Patch removed",
-                                "Sucessfully removed patch",
-                            );
-                        }
-                        Ok(false) => {}
-                        Err(err) => {
-                            ngw::modal_error_message(
-                                &window_handle,
-                                "Failed to remove patch",
-                                &err.to_string(),
-                            );
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    });
-
-    ngw::dispatch_thread_events();
-    ngw::unbind_event_handler(&handler);
+    nwg::dispatch_thread_events();
 }

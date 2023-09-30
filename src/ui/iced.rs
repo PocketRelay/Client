@@ -1,7 +1,8 @@
 use crate::{
-    constants::{APP_VERSION, ICON_BYTES},
-    remove_host_entry, show_error, show_info, try_patch_game, try_remove_patch, try_update_host,
-    ClientConfig, LookupData, LookupError,
+    api::{try_update_host, LookupData, LookupError},
+    config::ClientConfig,
+    constants::{ICON_BYTES, WINDOW_TITLE},
+    patch::{try_patch_game, try_remove_patch},
 };
 use iced::{
     executor,
@@ -13,11 +14,14 @@ use iced::{
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
+use reqwest::Client;
+
+use super::{show_error, show_info};
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 310);
 
-pub fn init(_: tokio::runtime::Runtime, config: Option<ClientConfig>) {
+pub fn init(config: Option<ClientConfig>, client: Client) {
     App::run(Settings {
         window: window::Settings {
             icon: icon::from_file_data(ICON_BYTES, None).ok(),
@@ -26,7 +30,7 @@ pub fn init(_: tokio::runtime::Runtime, config: Option<ClientConfig>) {
 
             ..window::Settings::default()
         },
-        flags: config,
+        flags: (config, client),
         ..Settings::default()
     })
     .unwrap();
@@ -36,12 +40,7 @@ struct App {
     lookup_result: LookupState,
     remember: bool,
     target: String,
-}
-
-impl Drop for App {
-    fn drop(&mut self) {
-        let _ = remove_host_entry();
-    }
+    http_client: Client,
 }
 
 /// Messages used for updating the game state
@@ -77,11 +76,12 @@ enum LookupState {
 impl Application for App {
     type Message = AppMessage;
     type Executor = executor::Default;
-    type Flags = Option<ClientConfig>;
+    type Flags = (Option<ClientConfig>, Client);
     type Theme = Theme;
 
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let (target, remember) = flags
+        let (config, http_client) = flags;
+        let (target, remember) = config
             .map(|value| (value.connection_url, true))
             .unwrap_or_default();
 
@@ -90,13 +90,14 @@ impl Application for App {
                 lookup_result: LookupState::None,
                 target,
                 remember,
+                http_client,
             },
             Command::none(),
         )
     }
 
     fn title(&self) -> String {
-        format!("Pocket Relay Client v{}", APP_VERSION)
+        WINDOW_TITLE.to_string()
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
@@ -124,7 +125,10 @@ impl Application for App {
                 };
 
                 // Perform the async lookup with the callback
-                return Command::perform(try_update_host(target, self.remember), post_lookup);
+                return Command::perform(
+                    try_update_host(self.http_client.clone(), target, self.remember),
+                    post_lookup,
+                );
             }
             // Patching
             AppMessage::PatchGame => match try_patch_game() {
@@ -179,8 +183,9 @@ impl Application for App {
             LookupState::Error(err) => text(err).style(Palette::DARK.danger),
         };
 
-        let status_text =
-            scrollable(status_text).horizontal_scroll(Properties::new().width(2).scroller_width(2));
+        let status_text = scrollable(status_text).direction(scrollable::Direction::Horizontal(
+            Properties::new().width(2).scroller_width(2),
+        ));
 
         let target_row: Row<_> = row![target_input, target_button].spacing(SPACING);
 

@@ -1,6 +1,6 @@
 [package]
 name = "pocket-relay-client"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2021"
 build = "build.rs"
 license = "MIT"
@@ -15,48 +15,51 @@ winres = "0.1"
 [features]
 default = ["iced"]
 iced = ["dep:iced"]
-native = ["dep:native-windows-gui"]
+native = ["dep:native-windows-gui", "dep:native-windows-derive"]
 
 [dependencies]
-# Serialization and HTTP requests
-reqwest = { version = "0.11", features = ["json"] }
+blaze-ssl-async = "^0.3"
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Blaze packet system 
-blaze-pk = "1"
-# Blaze SSLv3 async TCPStream implementation
-blaze-ssl-async = "^0.3"
+tdf = "0.1"
+bytes = "1.4"
 
-# Native file picker dialog
-native-dialog = "0.6.3"
+# Tokio async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
 
 # Library for obtaining the local IP address of the device
 local-ip-address = "0.5"
 
-tokio-util = { version = "0.7", features = ["codec"] }
-futures-util = { version = "0.3", features = ["sink"] }
+futures = "0.3"
 thiserror = "1"
-semver = "1.0.18"
+semver = { version = "1", features = ["serde"] }
 hyper = { version = "0.14", features = ["server", "http1", "tcp", "runtime"] }
+
+log = "0.4"
+env_logger = "0.10"
+
+# Native file picker dialog
+native-dialog = "0.6"
+# Native Windows GUI framework variant
+native-windows-gui = { version = "1", optional = true, features = ["notice"] }
+native-windows-derive = { version = "1", optional = true }
+
+[dependencies.reqwest]
+version = "0.11"
+default_features = false
+features = ["json", "native-tls"]
 
 # Iced GUI framework variant
 [dependencies.iced]
-version = "0.9"
+version = "0.10"
 default-features = false
-features = ["image", "glow", "tokio"]
+features = ["image", "tokio"]
 optional = true
-
-# Native Windows GUI framework variant
-[dependencies.native-windows-gui]
-version = "1.0.13"
-optional = true
-
-# Tokio async runtime
-[dependencies.tokio]
-version = "1"
-features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync", "fs"]
 
 [profile.release]
 strip = true
 lto = true
+codegen-units = 1
