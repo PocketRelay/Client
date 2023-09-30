@@ -1,3 +1,5 @@
+//! Patching module providing game patching functionality
+
 use crate::{
     constants::{BINKW23_DLL_BYTES, BINKW32_DLL_BYTES},
     ui::try_pick_game_path,
@@ -28,6 +30,8 @@ pub enum PatchError {
     FailedWritingPatchFiles(io::Error),
 }
 
+/// Attempts to remove the patch from a game, prompts the user for the
+/// game executable path then attempts to remove the patches
 pub fn try_remove_patch() -> Result<bool, PatchError> {
     let path = match try_pick_game_path().map_err(|_| PatchError::PickFileFailed)? {
         Some(value) => value,
@@ -56,6 +60,8 @@ pub fn try_remove_patch() -> Result<bool, PatchError> {
     Ok(true)
 }
 
+/// Attempts to patch a game, prompts the user for the game executable
+/// path then attempts to write the patches
 pub fn try_patch_game() -> Result<bool, PatchError> {
     let path = match try_pick_game_path().map_err(|_| PatchError::PickFileFailed)? {
         Some(value) => value,

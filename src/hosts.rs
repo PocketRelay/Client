@@ -1,3 +1,5 @@
+//! Hosts module providing host file modification functionality
+
 use crate::constants::{HOSTS_PATH, HOST_KEY, HOST_VALUE};
 use log::{debug, error};
 use std::{

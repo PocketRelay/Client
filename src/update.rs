@@ -1,3 +1,5 @@
+//! Updater module for providing auto-updating functionality
+
 use std::{env::current_exe, path::Path, process::exit};
 use crate::{
     constants::{APP_VERSION, IS_NATIVE_VERSION}, ui::{show_info, show_error, show_confirm},

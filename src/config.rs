@@ -1,5 +1,6 @@
 use std::env::current_exe;
 
+use log::debug;
 use serde::{Deserialize, Serialize};
 use tokio::fs::{read, write};
 
@@ -20,6 +21,8 @@ pub async fn read_config_file() -> Option<ClientConfig> {
     if !file_path.exists() {
         return None;
     }
+
+    debug!("Reading config file");
 
     let bytes = match read(file_path).await {
         Ok(value) => value,
@@ -55,6 +58,8 @@ pub async fn write_config_file(config: &ClientConfig) {
             return;
         }
     };
+
+    debug!("Writing config file");
 
     if let Err(err) = write(file_path, bytes).await {
         show_error("Failed to save client config", &err.to_string());
