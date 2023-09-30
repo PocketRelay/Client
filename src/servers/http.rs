@@ -40,19 +40,22 @@ pub async fn start_server() {
     }
 }
 
-async fn proxy_http(req: Request<hyper::body::Body>) -> Result<Response<Body>, Infallible> {
+async fn proxy_http(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    // Get the path and query segement from the URL
     let path = req
         .uri()
         .path_and_query()
         .map(|value| value.as_str())
         .unwrap_or_default();
 
+    // Attempt to create the proxy target URL
     let target_url = {
         let target_guard = TARGET.read().await;
+
         let target = match target_guard.as_ref() {
             Some(value) => value,
             None => {
-                let mut error_response = Response::new(hyper::Body::empty());
+                let mut error_response = Response::default();
                 *error_response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
                 return Ok(error_response);
             }
@@ -64,30 +67,35 @@ async fn proxy_http(req: Request<hyper::body::Body>) -> Result<Response<Body>, I
         )
     };
 
-    let client = Client::new();
-    let proxy_response = match client.get(target_url).send().await {
+    let response = match proxy_request(target_url).await {
         Ok(value) => value,
         Err(err) => {
-            error!("Failed to send HTTP request: {:?}", err);
-            let mut error_response = Response::new(hyper::Body::empty());
-            *error_response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-            return Ok(error_response);
-        }
-    };
-    let status = proxy_response.status();
-    let headers = proxy_response.headers().clone();
+            error!("Failed to proxy HTTP request: {}", err);
 
-    let body = match proxy_response.bytes().await {
-        Ok(value) => value,
-        Err(err) => {
-            error!("Failed to read HTTP response body: {}", err);
-            let mut error_response = Response::new(hyper::Body::empty());
+            let mut error_response = Response::default();
             *error_response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
             return Ok(error_response);
         }
     };
 
-    let mut response = Response::new(hyper::body::Body::from(body));
+    Ok(response)
+}
+
+/// Makes the proxy request to the target url provided, creating
+/// a response on success or providing an error.
+async fn proxy_request(target_url: String) -> Result<Response<Body>, reqwest::Error> {
+    let http_client = Client::new();
+
+    let response = http_client.get(target_url).send().await?;
+
+    // Extract response status and headers before its consumed to load the body
+    let status = response.status();
+    let headers = response.headers().clone();
+
+    let body = response.bytes().await?;
+
+    // Create new response from the proxy response
+    let mut response = Response::new(Body::from(body));
     *response.status_mut() = status;
     *response.headers_mut() = headers;
 
