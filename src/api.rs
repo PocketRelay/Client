@@ -1,6 +1,6 @@
 use crate::{
     config::{write_config_file, ClientConfig},
-    constants::{APP_VERSION, MIN_SERVER_VERSION, SERVER_IDENT},
+    constants::{MIN_SERVER_VERSION, PR_USER_AGENT, SERVER_IDENT},
 };
 use hyper::{
     header::{ACCEPT, USER_AGENT},
@@ -87,7 +87,7 @@ pub async fn try_lookup_host(host: &str) -> Result<LookupData, LookupError> {
     let response = client
         .get(url)
         .header(ACCEPT, "application/json")
-        .header(USER_AGENT, format!("PocketRelayClient/v{}", APP_VERSION))
+        .header(USER_AGENT, PR_USER_AGENT)
         .send()
         .await
         .map_err(LookupError::ConnectionFailed)?;

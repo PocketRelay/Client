@@ -1,6 +1,6 @@
 use crate::{
     api::TARGET,
-    constants::{HTTP_PORT, MAIN_PORT},
+    constants::{HTTP_PORT, MAIN_PORT, PR_USER_AGENT},
     ui::show_error,
 };
 use hyper::header::HeaderName;
@@ -53,22 +53,22 @@ const HEADER_LOCAL_HTTP: &str = "x-pocket-relay-local-http";
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
 
 async fn handle_blaze(mut client: TcpStream) {
-    let target = match &*TARGET.read().await {
-        Some(value) => value.clone(),
+    let url = match &*TARGET.read().await {
+        // Create the upgrade URL
+        Some(target) => format!(
+            "{}://{}:{}{}",
+            target.scheme, target.host, target.port, UPGRADE_ENDPOINT
+        ),
         None => return,
     };
-
-    // Create the upgrade URL
-    let url = format!(
-        "{}://{}:{}{}",
-        target.scheme, target.host, target.port, UPGRADE_ENDPOINT
-    );
 
     // Create the required headers
     let headers: HeaderMap<HeaderValue> = [
         // Required headers for HTTP upgrade
         (header::CONNECTION, HeaderValue::from_static("Upgrade")),
         (header::UPGRADE, HeaderValue::from_static("blaze")),
+        // Client user agent
+        (header::USER_AGENT, HeaderValue::from_static(PR_USER_AGENT)),
         // Legacy headers to force usage of local HTTP
         (
             HeaderName::from_static(LEGACY_HEADER_SCHEME),

@@ -3,6 +3,9 @@ use semver::Version;
 /// Constant storing the application version
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// User agent used for requests (PocketRelayClient/v0.2.8)
+pub const PR_USER_AGENT: &str = concat!("PocketRelayClient/v", env!("CARGO_PKG_VERSION"));
+
 /// The host address to redirect in the hosts file
 pub const HOST_KEY: &str = "gosredirector.ea.com";
 /// Host address target (Localhost)

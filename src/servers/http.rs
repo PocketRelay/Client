@@ -1,7 +1,8 @@
 use crate::api::TARGET;
-use crate::constants::HTTP_PORT;
+use crate::constants::{HTTP_PORT, PR_USER_AGENT};
 use crate::ui::show_error;
 use hyper::body::Body;
+use hyper::header::USER_AGENT;
 use hyper::service::service_fn;
 use hyper::{server::conn::Http, Request};
 use hyper::{Response, StatusCode};
@@ -86,7 +87,11 @@ async fn proxy_http(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 async fn proxy_request(target_url: String) -> Result<Response<Body>, reqwest::Error> {
     let http_client = Client::new();
 
-    let response = http_client.get(target_url).send().await?;
+    let response = http_client
+        .get(target_url)
+        .header(USER_AGENT, PR_USER_AGENT)
+        .send()
+        .await?;
 
     // Extract response status and headers before its consumed to load the body
     let status = response.status();

@@ -1,13 +1,14 @@
 //! Updater module for providing auto-updating functionality
 
-use std::{env::current_exe, path::Path, process::exit};
 use crate::{
-    constants::{APP_VERSION, IS_NATIVE_VERSION}, ui::{show_info, show_error, show_confirm},
+    constants::{APP_VERSION, IS_NATIVE_VERSION, PR_USER_AGENT},
+    ui::{show_confirm, show_error, show_info},
 };
 use log::{debug, error};
 use reqwest::header::{ACCEPT, USER_AGENT};
 use semver::Version;
 use serde::Deserialize;
+use std::{env::current_exe, path::Path, process::exit};
 
 /// Structure for https://api.github.com/repos/PocketRelay/Client/releases/latest
 /// (Only the required parts)
@@ -40,7 +41,7 @@ pub async fn get_latest_release() -> Result<GitHubRelease, reqwest::Error> {
     client
         .get("https://api.github.com/repos/PocketRelay/Client/releases/latest")
         .header(ACCEPT, "application/json")
-        .header(USER_AGENT, format!("Pocket Relay Client/{}", APP_VERSION))
+        .header(USER_AGENT, PR_USER_AGENT)
         .send()
         .await?
         .json()
@@ -56,7 +57,7 @@ pub async fn download_latest_release(
     let client = reqwest::Client::new();
     let bytes = client
         .get(&asset.browser_download_url)
-        .header(USER_AGENT, format!("Pocket Relay Client/{}", APP_VERSION))
+        .header(USER_AGENT, PR_USER_AGENT)
         .send()
         .await?
         .bytes()
@@ -128,7 +129,7 @@ pub async fn update() {
         "There is a new version of the client available, would you like to update automatically?\n\n\
         Your version: v{}\n\
         Latest Version: v{}\n",
-        current_version, latest_version, 
+        current_version, latest_version,
     );
 
     let confirm = show_confirm("New version is available", &msg);
