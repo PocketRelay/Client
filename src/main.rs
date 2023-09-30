@@ -15,10 +15,10 @@ mod servers;
 mod ui;
 mod update;
 
-// Native UI variant
+// Windows native UI variant
 #[cfg(feature = "native")]
 use ui::native::init;
-// Native UI variant
+// Iced UI variant
 #[cfg(feature = "iced")]
 use ui::iced::init;
 
