@@ -1,6 +1,7 @@
-use std::env::current_exe;
+use std::{env::current_exe, path::Path};
 
 use log::debug;
+use reqwest::Identity;
 use serde::{Deserialize, Serialize};
 use tokio::fs::{read, write};
 
@@ -64,4 +65,29 @@ pub async fn write_config_file(config: &ClientConfig) {
     if let Err(err) = write(file_path, bytes).await {
         show_error("Failed to save client config", &err.to_string());
     }
+}
+
+pub async fn load_client_identity() -> Option<Identity> {
+    let identity_file = Path::new("pocket-relay-identity.p12");
+    if !identity_file.exists() || !identity_file.is_file() {
+        return None;
+    }
+
+    let identity_bytes = match read(identity_file).await {
+        Ok(value) => value,
+        Err(err) => {
+            show_error("Failed to read identity", &err.to_string());
+            return None;
+        }
+    };
+
+    let identity = match Identity::from_pkcs12_der(&identity_bytes, "") {
+        Ok(value) => value,
+        Err(err) => {
+            show_error("Failed to load identity", &err.to_string());
+            return None;
+        }
+    };
+
+    Some(identity)
 }

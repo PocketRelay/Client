@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use config::read_config_file;
+use config::{load_client_identity, read_config_file};
 use constants::PR_USER_AGENT;
 use hosts::HostEntryGuard;
 use reqwest::Client;
@@ -27,7 +27,12 @@ async fn main() {
 
     let config = read_config_file().await;
 
-    let client_builder = Client::builder().user_agent(PR_USER_AGENT);
+    let mut client_builder = Client::builder().user_agent(PR_USER_AGENT);
+
+    if let Some(identity) = load_client_identity().await {
+        client_builder = client_builder.identity(identity);
+    }
+
     let client = client_builder.build().expect("Failed to build HTTP client");
 
     tokio::spawn(update::update(client.clone()));

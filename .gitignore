@@ -1,3 +1,4 @@
 /target
 .release
 build-release.nu
+/private
