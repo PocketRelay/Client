@@ -1,4 +1,5 @@
 use crate::{constants::QOS_PORT, ui::show_error};
+use log::debug;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     process::exit,
@@ -39,6 +40,8 @@ pub async fn start_server() {
                 }
             }
         };
+        debug!("QOS IP: {}", address);
+        debug!("QOS PORT: {}", addr.port());
 
         // Get the new buffer content
         let recv = &buffer[..count];
