@@ -41,13 +41,13 @@ pub async fn start_server() {
 }
 
 /// Header for the Pocket Relay connection scheme used by the client
-const LEGACY_HEADER_SCHEME: HeaderName = HeaderName::from_static("X-Pocket-Relay-Scheme");
+const LEGACY_HEADER_SCHEME: &str = "x-pocket-relay-scheme";
 /// Header for the Pocket Relay connection port used by the client
-const LEGACY_HEADER_PORT: HeaderName = HeaderName::from_static("X-Pocket-Relay-Port");
+const LEGACY_HEADER_PORT: &str = "x-pocket-relay-port";
 /// Header for the Pocket Relay connection host used by the client
-const LEGACY_HEADER_HOST: HeaderName = HeaderName::from_static("X-Pocket-Relay-Host");
+const LEGACY_HEADER_HOST: &str = "x-pocket-relay-host";
 /// Header to tell the server to use local HTTP
-const HEADER_LOCAL_HTTP: HeaderName = HeaderName::from_static("X-Pocket-Relay-Local-Http");
+const HEADER_LOCAL_HTTP: &str = "x-pocket-relay-local-http";
 
 /// Endpoint for upgrading the server connection
 const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
@@ -70,11 +70,23 @@ async fn handle_blaze(mut client: TcpStream) {
         (header::CONNECTION, HeaderValue::from_static("Upgrade")),
         (header::UPGRADE, HeaderValue::from_static("blaze")),
         // Legacy headers to force usage of local HTTP
-        (LEGACY_HEADER_SCHEME, HeaderValue::from_static("http")),
-        (LEGACY_HEADER_HOST, HeaderValue::from_static("127.0.0.1")),
-        (LEGACY_HEADER_PORT, HeaderValue::from(HTTP_PORT)),
+        (
+            HeaderName::from_static(LEGACY_HEADER_SCHEME),
+            HeaderValue::from_static("http"),
+        ),
+        (
+            HeaderName::from_static(LEGACY_HEADER_HOST),
+            HeaderValue::from_static("127.0.0.1"),
+        ),
+        (
+            HeaderName::from_static(LEGACY_HEADER_PORT),
+            HeaderValue::from(HTTP_PORT),
+        ),
         // Header informing server to use local http (Legacy servers)
-        (HEADER_LOCAL_HTTP, HeaderValue::from_static("true")),
+        (
+            HeaderName::from_static(HEADER_LOCAL_HTTP),
+            HeaderValue::from_static("true"),
+        ),
     ]
     .into_iter()
     .collect();
