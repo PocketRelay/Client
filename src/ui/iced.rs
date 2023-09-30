@@ -20,7 +20,7 @@ use super::{show_error, show_info};
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 310);
 
-pub fn init(_: tokio::runtime::Runtime, config: Option<ClientConfig>) {
+pub fn init(config: Option<ClientConfig>) {
     App::run(Settings {
         window: window::Settings {
             icon: icon::from_file_data(ICON_BYTES, None).ok(),
@@ -93,7 +93,7 @@ impl Application for App {
     }
 
     fn title(&self) -> String {
-        format!("Pocket Relay Client v{}", APP_VERSION)
+        WINDOW_TITLE.to_string()
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {

@@ -13,14 +13,14 @@ pub mod native;
 /// Wrapper around the init functions for the different
 /// UI variants based on the enabled features
 #[inline(always)]
-pub fn init(runtime: tokio::runtime::Runtime, config: Option<ClientConfig>) {
+pub fn init(config: Option<ClientConfig>) {
     #[cfg(feature = "iced")]
     {
-        iced::init(runtime, config)
+        iced::init(config)
     }
     #[cfg(feature = "native")]
     {
-        native::init(runtime, config)
+        native::init(config)
     }
 }
 

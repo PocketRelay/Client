@@ -3,6 +3,9 @@ use semver::Version;
 /// Constant storing the application version
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Title used for created windows
+pub const WINDOW_TITLE: &str = concat!("Pocket Relay Client v", env!("CARGO_PKG_VERSION"));
+
 /// User agent used for requests (PocketRelayClient/v0.2.8)
 pub const PR_USER_AGENT: &str = concat!("PocketRelayClient/v", env!("CARGO_PKG_VERSION"));
 

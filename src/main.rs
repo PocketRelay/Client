@@ -15,24 +15,19 @@ mod servers;
 mod ui;
 mod update;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::builder()
         .filter_module("pocket_relay_client", log::LevelFilter::Debug)
         .init();
 
     let _host_guard = HostEntryGuard::apply();
 
-    // Create tokio async runtime
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("Failed building the Runtime");
+    let config = read_config_file().await;
 
-    let config = runtime.block_on(read_config_file());
-
-    runtime.spawn(update::update());
-    runtime.spawn(servers::start());
+    tokio::spawn(update::update());
+    tokio::spawn(servers::start());
 
     // Initialize the UI
-    ui::init(runtime, config);
+    ui::init(config);
 }

@@ -15,7 +15,7 @@ winres = "0.1"
 [features]
 default = ["iced"]
 iced = ["dep:iced"]
-native = ["dep:native-windows-gui"]
+native = ["dep:native-windows-gui", "dep:native-windows-derive"]
 
 [dependencies]
 reqwest = { version = "0.11", features = ["json"] }
@@ -45,7 +45,8 @@ env_logger = "0.10"
 # Native file picker dialog
 native-dialog = "0.6"
 # Native Windows GUI framework variant
-native-windows-gui = { version = "1", optional = true }
+native-windows-gui = { version = "1", optional = true, features = ["notice"] }
+native-windows-derive = { version = "1", optional = true }
 
 # Iced GUI framework variant
 [dependencies.iced]
