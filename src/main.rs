@@ -15,13 +15,6 @@ mod servers;
 mod ui;
 mod update;
 
-// Windows native UI variant
-#[cfg(feature = "native")]
-use ui::native::init;
-// Iced UI variant
-#[cfg(feature = "iced")]
-use ui::iced::init;
-
 fn main() {
     env_logger::builder()
         .filter_module("pocket_relay_client", log::LevelFilter::Debug)
@@ -41,5 +34,5 @@ fn main() {
     runtime.spawn(servers::start());
 
     // Initialize the UI
-    init(runtime, config);
+    ui::init(runtime, config);
 }

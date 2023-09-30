@@ -1,10 +1,28 @@
 use native_dialog::{FileDialog, MessageDialog};
 use std::path::PathBuf;
 
+use crate::config::ClientConfig;
+
+// Iced UI variant
 #[cfg(feature = "iced")]
 pub mod iced;
+// Windows native UI variant
 #[cfg(feature = "native")]
 pub mod native;
+
+/// Wrapper around the init functions for the different
+/// UI variants based on the enabled features
+#[inline(always)]
+pub fn init(runtime: tokio::runtime::Runtime, config: Option<ClientConfig>) {
+    #[cfg(feature = "iced")]
+    {
+        iced::init(runtime, config)
+    }
+    #[cfg(feature = "native")]
+    {
+        native::init(runtime, config)
+    }
+}
 
 pub fn try_pick_game_path() -> native_dialog::Result<Option<PathBuf>> {
     FileDialog::new()
