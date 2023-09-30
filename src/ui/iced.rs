@@ -70,7 +70,7 @@ enum LookupState {
     /// Lookup complete success
     Success(LookupData),
     /// Lookup failed error
-    Error(String),
+    Error,
 }
 
 impl Application for App {
@@ -119,7 +119,10 @@ impl Application for App {
                 let post_lookup = |result: Result<LookupData, LookupError>| {
                     let result = match result {
                         Ok(value) => LookupState::Success(value),
-                        Err(err) => LookupState::Error(err.to_string()),
+                        Err(err) => {
+                            show_error("Failed to connect", &err.to_string());
+                            LookupState::Error
+                        }
                     };
                     AppMessage::LookupState(result)
                 };
@@ -180,7 +183,7 @@ impl Application for App {
                 lookup_data.scheme, lookup_data.host, lookup_data.version
             ))
             .style(Palette::DARK.success),
-            LookupState::Error(err) => text(err).style(Palette::DARK.danger),
+            LookupState::Error => text("Failed to connect").style(Palette::DARK.danger),
         };
 
         let status_text = scrollable(status_text).direction(scrollable::Direction::Horizontal(
