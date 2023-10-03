@@ -1,4 +1,4 @@
 /target
 .release
-build-release.nu
+/scripts
 /private
