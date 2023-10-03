@@ -14,7 +14,10 @@ pub const HOST_KEY: &str = "gosredirector.ea.com";
 /// Host address target (Localhost)
 pub const HOST_VALUE: &str = "127.0.0.1";
 /// The path to the system hosts file
+#[cfg(target_family = "windows")]
 pub const HOSTS_PATH: &str = "C:/Windows/System32/drivers/etc/hosts";
+#[cfg(target_family = "unix")]
+pub const HOSTS_PATH: &str = "/etc/hosts";
 
 /// Window icon bytes
 pub const ICON_BYTES: &[u8] = include_bytes!("resources/assets/icon.ico");
