@@ -103,11 +103,15 @@ pub async fn update(client: Client) {
 
     debug!("New version is available ({})", latest_version);
 
+    #[cfg(target_family = "windows")]
     let asset_name = if IS_NATIVE_VERSION {
         "pocket-relay-client-native.exe"
     } else {
         "pocket-relay-client.exe"
     };
+
+    #[cfg(target_family = "unix")]
+    let asset_name = "pocket-relay-client-linux";
 
     let asset = match latest_release
         .assets
