@@ -7,6 +7,7 @@ pub mod packet;
 pub mod qos;
 pub mod redirector;
 pub mod telemetry;
+pub mod tunnel;
 
 /// Starts and waits for all the servers
 pub async fn start(http_client: Client) {
@@ -15,6 +16,6 @@ pub async fn start(http_client: Client) {
         qos::start_server(),
         redirector::start_server(),
         telemetry::start_server(http_client.clone()),
-        http::start_server(http_client)
+        http::start_server(http_client),
     );
 }

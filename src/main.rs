@@ -7,6 +7,8 @@ use config::{load_client_identity, read_config_file};
 use constants::PR_USER_AGENT;
 use hosts::HostEntryGuard;
 use reqwest::Client;
+use servers::tunnel;
+use tokio::task::spawn_blocking;
 
 mod api;
 mod config;
@@ -37,6 +39,7 @@ async fn main() {
 
     tokio::spawn(update::update(client.clone()));
     tokio::spawn(servers::start(client.clone()));
+    tokio::spawn(spawn_blocking(|| tunnel::start_tunnel()));
 
     // Initialize the UI
     ui::init(config, client);
