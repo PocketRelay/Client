@@ -22,11 +22,6 @@ pub const HOSTS_PATH: &str = "/etc/hosts";
 /// Window icon bytes
 pub const ICON_BYTES: &[u8] = include_bytes!("resources/assets/icon.ico");
 
-/// Bytes of the origin binkw32.dll
-pub const BINKW23_DLL_BYTES: &[u8] = include_bytes!("resources/binkw23.dll");
-/// Bytes of the proxy binkw32.dll
-pub const BINKW32_DLL_BYTES: &[u8] = include_bytes!("resources/binkw32.dll");
-
 /// The local redirector server port
 pub const REDIRECTOR_PORT: u16 = 42127;
 /// The local proxy main server port

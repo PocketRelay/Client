@@ -1,8 +1,6 @@
-use native_dialog::{FileDialog, MessageDialog};
-use reqwest::Client;
-use std::path::PathBuf;
-
 use crate::config::ClientConfig;
+use native_dialog::MessageDialog;
+use reqwest::Client;
 
 // Iced UI variant
 #[cfg(feature = "iced")]
@@ -23,13 +21,6 @@ pub fn init(config: Option<ClientConfig>, client: Client) {
     {
         native::init(config, client)
     }
-}
-
-pub fn try_pick_game_path() -> native_dialog::Result<Option<PathBuf>> {
-    FileDialog::new()
-        .set_filename("MassEffect3.exe")
-        .add_filter("Mass Effect 3 Executable", &["exe"])
-        .show_open_single_file()
 }
 
 pub fn show_info(title: &str, text: &str) {

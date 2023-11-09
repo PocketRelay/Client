@@ -1,8 +1,8 @@
+use super::show_error;
 use crate::{
     api::{try_update_host, LookupData, LookupError},
     config::ClientConfig,
     constants::{ICON_BYTES, WINDOW_TITLE},
-    patch::{try_patch_game, try_remove_patch},
 };
 use iced::{
     executor,
@@ -16,10 +16,8 @@ use iced::{
 };
 use reqwest::Client;
 
-use super::{show_error, show_info};
-
 /// The window size
-pub const WINDOW_SIZE: (u32, u32) = (500, 310);
+pub const WINDOW_SIZE: (u32, u32) = (500, 200);
 
 pub fn init(config: Option<ClientConfig>, client: Client) {
     App::run(Settings {
@@ -50,10 +48,6 @@ enum AppMessage {
     TargetChanged(String),
     /// The redirector target should be updated
     UpdateTarget,
-    /// Display the patch game dialog asking the player to patch
-    PatchGame,
-    /// Remove the patch from the game
-    RemovePatch,
     /// Message for setting the current lookup result state
     LookupState(LookupState),
     /// The remember checkbox button has changed
@@ -133,24 +127,7 @@ impl Application for App {
                     post_lookup,
                 );
             }
-            // Patching
-            AppMessage::PatchGame => match try_patch_game() {
-                // Game was patched
-                Ok(true) => show_info("Game patched", "Sucessfully patched game"),
-                // Patching was cancelled
-                Ok(false) => {}
-                // Error occurred
-                Err(err) => show_error("Failed to patch game", &err.to_string()),
-            },
-            // Patch removal
-            AppMessage::RemovePatch => match try_remove_patch() {
-                // Patch was removed
-                Ok(true) => show_info("Patch removed", "Sucessfully removed patch"),
-                // Patch removal cancelled
-                Ok(false) => {}
-                // Error occurred
-                Err(err) => show_error("Failed to remove patch", &err.to_string()),
-            },
+
             // Lookup result changed
             AppMessage::LookupState(value) => self.lookup_result = value,
             // Remember value changed
@@ -204,35 +181,8 @@ impl Application for App {
         )
         .style(RED_TEXT);
 
-        // Game patching buttons
-        let patch_button: Button<_> = button("Patch Game")
-            .on_press(AppMessage::PatchGame)
-            .padding(5);
-        let unpatch_button: Button<_> = button("Remove Patch")
-            .on_press(AppMessage::RemovePatch)
-            .padding(5);
-
-        // Patching notice
-        let patch_notice: Text = text(
-            "You must patch your game in order to make it compatible with Pocket Relay. \
-            This patch can be left applied and wont affect playing on official servers.",
-        )
-        .style(DARK_TEXT);
-
-        let actions_row: Row<_> = row![patch_button, unpatch_button]
-            .spacing(SPACING)
-            .width(Length::Fill);
-
-        let content: Column<_> = column![
-            target_text,
-            target_row,
-            remember_check,
-            status_text,
-            notice,
-            patch_notice,
-            actions_row
-        ]
-        .spacing(10);
+        let content: Column<_> =
+            column![target_text, target_row, remember_check, status_text, notice].spacing(10);
 
         container(content)
             .width(Length::Fill)

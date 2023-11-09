@@ -12,7 +12,6 @@ mod api;
 mod config;
 mod constants;
 mod hosts;
-mod patch;
 mod servers;
 mod ui;
 mod update;
