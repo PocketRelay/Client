@@ -13,7 +13,7 @@ keywords = ["EA", "PocketRelay", "MassEffect"]
 winres = "0.1"
 
 [features]
-default = ["native"]
+default = ["iced"]
 iced = ["dep:iced"]
 native = ["dep:native-windows-gui", "dep:native-windows-derive"]
 
