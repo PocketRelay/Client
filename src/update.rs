@@ -1,7 +1,7 @@
 //! Updater module for providing auto-updating functionality
 
 use crate::{
-    constants::{APP_VERSION, IS_NATIVE_VERSION},
+    constants::APP_VERSION,
     ui::{show_confirm, show_error, show_info},
 };
 use log::{debug, error};
@@ -67,6 +67,27 @@ pub async fn download_latest_release(
 
 /// Handles the updating process
 pub async fn update(client: Client) {
+    let path = current_exe().expect("Unable to locate executable path");
+
+    let parent = path.parent().expect("Missing exe parent directory");
+
+    let tmp_file = parent.join("pocket-relay-client.exe.tmp-download");
+    let tmp_old = parent.join("pocket-relay-client.exe.tmp-old");
+
+    // Remove the old file if it exists
+    if tmp_old.exists() {
+        tokio::fs::remove_file(&tmp_old)
+            .await
+            .expect("Failed to remove old executable");
+    }
+
+    // Remove temp download file if it exists
+    if tmp_file.exists() {
+        tokio::fs::remove_file(&tmp_file)
+            .await
+            .expect("Failed to remove temp executable");
+    }
+
     debug!("Checking for updates");
     let latest_release = match get_latest_release(&client).await {
         Ok(value) => value,
@@ -104,7 +125,7 @@ pub async fn update(client: Client) {
     debug!("New version is available ({})", latest_version);
 
     #[cfg(target_family = "windows")]
-    let asset_name = if IS_NATIVE_VERSION {
+    let asset_name = if cfg!(feature = "native") {
         "pocket-relay-client-native.exe"
     } else {
         "pocket-relay-client.exe"
@@ -137,13 +158,6 @@ pub async fn update(client: Client) {
         return;
     }
 
-    let path = current_exe().expect("Unable to locate executable path");
-
-    let parent = path.parent().expect("Missing exe parent directory");
-
-    let tmp_file = parent.join("pocket-relay-client.exe.tmp-download");
-    let tmp_old = parent.join("pocket-relay-client.exe.tmp-old");
-
     debug!("Downloading release");
 
     if let Err(err) = download_latest_release(&client, asset, &tmp_file).await {
@@ -163,10 +177,6 @@ pub async fn update(client: Client) {
     tokio::fs::rename(&tmp_file, path)
         .await
         .expect("Failed to rename executable");
-
-    tokio::fs::remove_file(tmp_old)
-        .await
-        .expect("Failed to remove old executable");
 
     show_info(
         "Update successfull",

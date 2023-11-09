@@ -41,6 +41,3 @@ pub const SERVER_IDENT: &str = "POCKET_RELAY_SERVER";
 
 /// Name of the file that stores saved pocket relay configuration info
 pub const CONFIG_FILE_NAME: &str = "pocket-relay-client.json";
-
-/// Constant for whether the client is the native or iced UI version
-pub const IS_NATIVE_VERSION: bool = cfg!(feature = "native");
