@@ -21,7 +21,8 @@ would normally go to `gosredirector.ea.com` to your local computer where its the
 
 ## 🔌 Credits
 
-This client application embeds the [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) patch DLLs in order to make its redirection work
+This repository contains files from [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) in the /legacy directory as they were embedded in previous
+versions of the client in order to disable certificate verification 
 
 ## EA / BioWare Notice
 
