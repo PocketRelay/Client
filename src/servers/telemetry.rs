@@ -8,7 +8,7 @@ use tokio::{
 };
 
 /// Server API endpoint to send telemetry data to
-const TELEMETRY_ENDPOINT: &str = "/api/server/telemetry";
+const TELEMETRY_ENDPOINT: &str = "api/server/telemetry";
 
 pub async fn start_server(http_client: Client) {
     // Initializing the underlying TCP listener
