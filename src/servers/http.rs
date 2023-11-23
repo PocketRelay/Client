@@ -66,7 +66,8 @@ async fn proxy_http(req: Request<Body>, http_client: Client) -> Result<Response<
             }
         };
 
-        debug!("{}", path);
+        // Remove the leading / to make the path relative
+        let path = path.strip_prefix('/').unwrap_or(path);
 
         match target.url.join(path) {
             Ok(value) => value,
