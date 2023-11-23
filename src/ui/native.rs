@@ -130,7 +130,9 @@ impl App {
             Ok(result) => {
                 let text = format!(
                     "Connected: {} {} version v{}",
-                    result.scheme, result.host, result.version
+                    result.url.scheme(),
+                    result.url.authority(),
+                    result.version
                 );
                 self.connection_label.set_text(&text)
             }

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{
     config::{write_config_file, ClientConfig},
     constants::{MIN_SERVER_VERSION, SERVER_IDENT},
@@ -9,6 +11,7 @@ use semver::Version;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::sync::RwLock;
+use url::Url;
 
 /// Shared target location
 pub static TARGET: RwLock<Option<LookupData>> = RwLock::const_new(None);
@@ -29,22 +32,18 @@ struct ServerDetails {
 /// version obtained from the server
 #[derive(Debug, Clone)]
 pub struct LookupData {
-    /// The scheme used to connect to the server (e.g http or https)
-    pub scheme: String,
-    /// The host address of the server
-    pub host: String,
+    /// Server url
+    pub url: Url,
     /// The server version
     pub version: Version,
-    /// The server port
-    pub port: u16,
 }
 
 /// Errors that can occur while looking up a server
 #[derive(Debug, Error)]
 pub enum LookupError {
     /// The server url was missing the host portion
-    #[error("Unable to find host portion of provided Connection URL")]
-    InvalidHostTarget,
+    #[error("Invalid Connection URL: {0}")]
+    InvalidHostTarget(#[from] url::ParseError),
     /// The server connection failed
     #[error("Failed to connect to server: {0}")]
     ConnectionFailed(reqwest::Error),
@@ -63,24 +62,31 @@ pub enum LookupError {
 }
 
 pub async fn try_lookup_host(client: Client, host: &str) -> Result<LookupData, LookupError> {
-    let mut url = String::new();
+    let url = {
+        let mut url = String::new();
 
-    // Fill in missing host portion
-    if !host.starts_with("http://") && !host.starts_with("https://") {
-        url.push_str("http://");
-        url.push_str(host)
-    } else {
-        url.push_str(host);
-    }
+        // Fill in missing scheme portion
+        if !host.starts_with("http://") && !host.starts_with("https://") {
+            url.push_str("http://");
+            url.push_str(host)
+        } else {
+            url.push_str(host);
+        }
 
-    if !host.ends_with('/') {
-        url.push('/')
-    }
+        // Ensure theres a trailing slash (URL path will be interpeted incorrectly without)
+        if !host.ends_with('/') {
+            url.push('/');
+        }
 
-    url.push_str("api/server");
+        url
+    };
+
+    let url = Url::from_str(&url)?;
+
+    let info_url = url.join("api/server").expect("Failed to server info URL");
 
     let response = client
-        .get(url)
+        .get(info_url)
         .header(ACCEPT, "application/json")
         .send()
         .await
@@ -107,15 +113,6 @@ pub async fn try_lookup_host(client: Client, host: &str) -> Result<LookupData, L
         }
     };
 
-    let url = response.url();
-    let scheme = url.scheme().to_string();
-
-    let port = url.port_or_known_default().unwrap_or(80);
-    let host = match url.host() {
-        Some(value) => value.to_string(),
-        None => return Err(LookupError::InvalidHostTarget),
-    };
-
     let details = response
         .json::<ServerDetails>()
         .await
@@ -134,9 +131,7 @@ pub async fn try_lookup_host(client: Client, host: &str) -> Result<LookupData, L
     }
 
     Ok(LookupData {
-        scheme,
-        host,
-        port,
+        url,
         version: details.version,
     })
 }

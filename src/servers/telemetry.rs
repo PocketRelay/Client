@@ -8,7 +8,7 @@ use tokio::{
 };
 
 /// Server API endpoint to send telemetry data to
-const TELEMETRY_ENDPOINT: &str = "/api/server/telemetry";
+const TELEMETRY_ENDPOINT: &str = "api/server/telemetry";
 
 pub async fn start_server(http_client: Client) {
     // Initializing the underlying TCP listener
@@ -36,16 +36,15 @@ pub async fn start_server(http_client: Client) {
                 None => return,
             };
 
-            // Create the telemetry URL
-            let url = format!(
-                "{}://{}:{}{}",
-                target.scheme, target.host, target.port, TELEMETRY_ENDPOINT
-            );
+            let url = target
+                .url
+                .join(TELEMETRY_ENDPOINT)
+                .expect("Failed to create telemetry endpoint");
 
             let mut stream = stream;
             while let Ok(message) = read_message(&mut stream).await {
                 // TODO: Batch these telemetry messages and send them to the server
-                let _ = http_client.post(&url).json(&message).send().await;
+                let _ = http_client.post(url.clone()).json(&message).send().await;
             }
         });
     }

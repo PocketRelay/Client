@@ -157,7 +157,9 @@ impl Application for App {
             LookupState::Loading => text("Connecting...").style(YELLOW_TEXT),
             LookupState::Success(lookup_data) => text(format!(
                 "Connected: {} {} version v{}",
-                lookup_data.scheme, lookup_data.host, lookup_data.version
+                lookup_data.url.scheme(),
+                lookup_data.url.authority(),
+                lookup_data.version
             ))
             .style(Palette::DARK.success),
             LookupState::Error => text("Failed to connect").style(Palette::DARK.danger),

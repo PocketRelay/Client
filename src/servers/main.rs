@@ -50,15 +50,16 @@ const LEGACY_HEADER_HOST: &str = "x-pocket-relay-host";
 const HEADER_LOCAL_HTTP: &str = "x-pocket-relay-local-http";
 
 /// Endpoint for upgrading the server connection
-const UPGRADE_ENDPOINT: &str = "/api/server/upgrade";
+const UPGRADE_ENDPOINT: &str = "api/server/upgrade";
 
 async fn handle_blaze(mut client: TcpStream, http_client: Client) {
     let url = match &*TARGET.read().await {
         // Create the upgrade URL
-        Some(target) => format!(
-            "{}://{}:{}{}",
-            target.scheme, target.host, target.port, UPGRADE_ENDPOINT
-        ),
+        Some(target) => target
+            .url
+            .join(UPGRADE_ENDPOINT)
+            .expect("Failed to create update endpoint URL"),
+
         None => return,
     };
 
