@@ -3,6 +3,7 @@ use crate::{
     config::{write_config_file, ClientConfig},
     constants::{ICON_BYTES, WINDOW_TITLE},
     servers::start_all_servers,
+    update,
 };
 use iced::{
     executor,
@@ -81,6 +82,9 @@ impl Application for App {
         let (target, remember) = config
             .map(|value| (value.connection_url, true))
             .unwrap_or_default();
+
+        // Spawn the update checking task
+        tokio::spawn(update::update(http_client.clone()));
 
         (
             App {

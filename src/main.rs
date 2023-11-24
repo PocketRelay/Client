@@ -20,21 +20,20 @@ mod servers;
 mod ui;
 mod update;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     env_logger::builder()
         .filter_module("pocket_relay_client", log::LevelFilter::Debug)
         .init();
 
     let _host_guard: HostEntryGuard = HostEntryGuard::apply();
 
-    let config: Option<config::ClientConfig> = read_config_file().await;
+    let config: Option<config::ClientConfig> = read_config_file();
 
     // Load the client identity
     let mut identity: Option<reqwest::Identity> = None;
     let identity_file = Path::new("pocket-relay-identity.p12");
     if identity_file.exists() && identity_file.is_file() {
-        identity = match read_client_identity(identity_file).await {
+        identity = match read_client_identity(identity_file) {
             Ok(value) => Some(value),
             Err(err) => {
                 error!("Failed to set client identity: {}", err);
@@ -45,8 +44,6 @@ async fn main() {
     }
 
     let client: Client = create_http_client(identity).expect("Failed to create HTTP client");
-
-    tokio::spawn(update::update(client.clone()));
 
     // Initialize the UI
     ui::init(config, client);

@@ -13,10 +13,10 @@ pub mod native;
 /// UI variants based on the enabled features
 #[inline(always)]
 pub fn init(config: Option<ClientConfig>, client: Client) {
-    #[cfg(feature = "iced")]
-    {
-        iced::init(config, client)
-    }
+    // #[cfg(feature = "iced")]
+    // {
+    //     iced::init(config, client)
+    // }
     #[cfg(feature = "native")]
     {
         native::init(config, client)

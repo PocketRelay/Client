@@ -2,14 +2,14 @@ use crate::{constants::CONFIG_FILE_NAME, ui::show_error};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::env::current_exe;
-use tokio::fs::{read, write};
+use tokio::fs::write;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClientConfig {
     pub connection_url: String,
 }
 
-pub async fn read_config_file() -> Option<ClientConfig> {
+pub fn read_config_file() -> Option<ClientConfig> {
     let current_path = current_exe().unwrap();
     let parent = current_path
         .parent()
@@ -22,7 +22,7 @@ pub async fn read_config_file() -> Option<ClientConfig> {
 
     debug!("Reading config file");
 
-    let bytes = match read(file_path).await {
+    let bytes = match std::fs::read(file_path) {
         Ok(value) => value,
         Err(err) => {
             show_error("Failed to read client config", &err.to_string());

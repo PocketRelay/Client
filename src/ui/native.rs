@@ -1,13 +1,14 @@
 use super::show_error;
 use crate::{
-    api::{try_update_host, LookupData, LookupError},
     config::{write_config_file, ClientConfig},
     constants::{ICON_BYTES, WINDOW_TITLE},
     servers::start_all_servers,
+    update,
 };
 use futures::FutureExt;
 use ngd::NwgUi;
 use nwg::{CheckBoxState, NativeUi};
+use pocket_relay_client_shared::api::{lookup_server, LookupData, LookupError};
 use reqwest::Client;
 use std::cell::RefCell;
 use tokio::task::JoinHandle;
@@ -135,9 +136,9 @@ impl App {
 
                 // Save the connection URL
                 if remember {
-                    let connection_url = value.url.to_string();
+                    let connection_url = result.url.to_string();
                     tokio::spawn(async move {
-                        write_config_file(&ClientConfig { connection_url }).await;
+                        write_config_file(ClientConfig { connection_url }).await;
                     });
                 }
 
@@ -158,6 +159,18 @@ impl App {
 }
 
 pub fn init(config: Option<ClientConfig>, client: Client) {
+    // Create tokio async runtime
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed building tokio runtime");
+
+    // Enter the tokio runtime
+    let _enter = runtime.enter();
+
+    // Spawn the updating task
+    tokio::spawn(update::update(client.clone()));
+
     nwg::init().expect("Failed to initialize native UI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
 
