@@ -1,8 +1,9 @@
 use super::show_error;
 use crate::{
     api::{try_update_host, LookupData, LookupError},
-    config::ClientConfig,
+    config::{write_config_file, ClientConfig},
     constants::{ICON_BYTES, WINDOW_TITLE},
+    servers::start_all_servers,
 };
 use futures::FutureExt;
 use ngd::NwgUi;
@@ -93,13 +94,12 @@ impl App {
         }
 
         self.connection_label.set_text("Connecting...");
-        let target = self.target_url_input.text();
-        let remember = self.remember_checkbox.check_state() == CheckBoxState::Checked;
+        let target = self.target_url_input.text().to_string();
         let sender = self.connect_notice.sender();
         let http_client = self.http_client.clone();
 
         let task = tokio::spawn(async move {
-            let result = try_update_host(http_client, target, remember).await;
+            let result = lookup_server(http_client, target).await;
             sender.notice();
             result
         });
@@ -128,6 +128,19 @@ impl App {
 
         match result {
             Ok(result) => {
+                // Start the servers
+                start_all_servers(self.http_client.clone(), result.url.clone());
+
+                let remember = self.remember_checkbox.check_state() == CheckBoxState::Checked;
+
+                // Save the connection URL
+                if remember {
+                    let connection_url = value.url.to_string();
+                    tokio::spawn(async move {
+                        write_config_file(&ClientConfig { connection_url }).await;
+                    });
+                }
+
                 let text = format!(
                     "Connected: {} {} version v{}",
                     result.url.scheme(),

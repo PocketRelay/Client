@@ -2496,17 +2496,36 @@ dependencies = [
 name = "pocket-relay-client"
 version = "0.3.1"
 dependencies = [
- "blaze-ssl-async",
  "bytes",
  "env_logger",
  "futures",
- "hyper",
  "iced",
  "local-ip-address",
  "log",
  "native-dialog",
  "native-windows-derive",
  "native-windows-gui",
+ "pocket-relay-client-shared",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "winres",
+]
+
+[[package]]
+name = "pocket-relay-client-shared"
+version = "0.1.0"
+dependencies = [
+ "blaze-ssl-async",
+ "bytes",
+ "env_logger",
+ "futures",
+ "hyper",
+ "local-ip-address",
+ "log",
+ "parking_lot 0.12.1",
  "reqwest",
  "semver",
  "serde",
@@ -2516,7 +2535,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
- "winres",
 ]
 
 [[package]]

@@ -1,8 +1,8 @@
 use super::show_error;
 use crate::{
-    api::{try_update_host, LookupData, LookupError},
-    config::ClientConfig,
+    config::{write_config_file, ClientConfig},
     constants::{ICON_BYTES, WINDOW_TITLE},
+    servers::start_all_servers,
 };
 use iced::{
     executor,
@@ -14,6 +14,7 @@ use iced::{
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
+use pocket_relay_client_shared::api::{lookup_server, LookupData, LookupError};
 use reqwest::Client;
 
 /// The window size
@@ -52,6 +53,8 @@ enum AppMessage {
     LookupState(LookupState),
     /// The remember checkbox button has changed
     RememberChanged(bool),
+    /// Message that doesn't do anything
+    Noop,
 }
 
 /// Different states that lookup process can be in
@@ -123,15 +126,37 @@ impl Application for App {
 
                 // Perform the async lookup with the callback
                 return Command::perform(
-                    try_update_host(self.http_client.clone(), target, self.remember),
+                    lookup_server(self.http_client.clone(), target),
                     post_lookup,
                 );
             }
 
             // Lookup result changed
-            AppMessage::LookupState(value) => self.lookup_result = value,
+            AppMessage::LookupState(value) => {
+                let mut command = Command::none();
+
+                if let LookupState::Success(value) = &value {
+                    // Start all the servers
+                    start_all_servers(self.http_client.clone(), value.url.clone());
+
+                    // Save the connection URL
+                    if self.remember {
+                        let connection_url = value.url.to_string();
+
+                        command = Command::perform(
+                            write_config_file(ClientConfig { connection_url }),
+                            |_| AppMessage::Noop,
+                        )
+                    }
+                }
+
+                self.lookup_result = value;
+                return command;
+            }
+
             // Remember value changed
             AppMessage::RememberChanged(value) => self.remember = value,
+            AppMessage::Noop => {}
         }
         Command::none()
     }

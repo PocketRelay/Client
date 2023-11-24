@@ -3,12 +3,16 @@
     windows_subsystem = "windows"
 )]
 
-use config::{load_client_identity, read_config_file};
-use constants::PR_USER_AGENT;
+use std::path::Path;
+
+use config::read_config_file;
 use hosts::HostEntryGuard;
+use log::error;
+use pocket_relay_client_shared::api::{create_http_client, read_client_identity};
 use reqwest::Client;
 
-mod api;
+use crate::ui::show_error;
+
 mod config;
 mod constants;
 mod hosts;
@@ -22,20 +26,27 @@ async fn main() {
         .filter_module("pocket_relay_client", log::LevelFilter::Debug)
         .init();
 
-    let _host_guard = HostEntryGuard::apply();
+    let _host_guard: HostEntryGuard = HostEntryGuard::apply();
 
-    let config = read_config_file().await;
+    let config: Option<config::ClientConfig> = read_config_file().await;
 
-    let mut client_builder = Client::builder().user_agent(PR_USER_AGENT);
-
-    if let Some(identity) = load_client_identity().await {
-        client_builder = client_builder.identity(identity);
+    // Load the client identity
+    let mut identity: Option<reqwest::Identity> = None;
+    let identity_file = Path::new("pocket-relay-identity.p12");
+    if identity_file.exists() && identity_file.is_file() {
+        identity = match read_client_identity(identity_file).await {
+            Ok(value) => Some(value),
+            Err(err) => {
+                error!("Failed to set client identity: {}", err);
+                show_error("Failed to set client identity", &err.to_string());
+                None
+            }
+        };
     }
 
-    let client = client_builder.build().expect("Failed to build HTTP client");
+    let client: Client = create_http_client(identity).expect("Failed to create HTTP client");
 
     tokio::spawn(update::update(client.clone()));
-    tokio::spawn(servers::start(client.clone()));
 
     // Initialize the UI
     ui::init(config, client);

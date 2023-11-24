@@ -18,26 +18,23 @@ iced = ["dep:iced"]
 native = ["dep:native-windows-gui", "dep:native-windows-derive"]
 
 [dependencies]
-blaze-ssl-async = "0.3.7"
+# Shared backing library
+pocket-relay-client-shared = { version = "0.1", path = "../pocket-relay-client-shared" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-tdf = "0.1"
 bytes = "1.4"
 
 # Tokio async runtime
 tokio = { version = "1", features = ["full"] }
-tokio-util = { version = "0.7", features = ["codec"] }
 
 # Library for obtaining the local IP address of the device
 local-ip-address = "0.5"
 
 futures = "0.3"
 thiserror = "1"
-semver = { version = "1", features = ["serde"] }
-hyper = { version = "0.14", features = ["server", "http1", "tcp", "runtime"] }
-url = "2.4.1"
+
 
 log = "0.4"
 env_logger = "0.10"
