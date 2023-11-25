@@ -2575,6 +2575,8 @@ dependencies = [
 [[package]]
 name = "pocket-relay-client-shared"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74101ad366e720f62505777dc257bd09c43d0f2399a4bf844a9ac9842e3561bb"
 dependencies = [
  "blaze-ssl-async",
  "bytes",
