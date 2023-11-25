@@ -2,7 +2,6 @@ use crate::{constants::CONFIG_FILE_NAME, ui::show_error};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::env::current_exe;
-use tokio::fs::write;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClientConfig {
@@ -59,7 +58,7 @@ pub async fn write_config_file(config: ClientConfig) {
 
     debug!("Writing config file");
 
-    if let Err(err) = write(file_path, bytes).await {
+    if let Err(err) = tokio::fs::write(file_path, bytes).await {
         show_error("Failed to save client config", &err.to_string());
     }
 }

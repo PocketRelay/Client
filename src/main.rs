@@ -4,16 +4,15 @@
 )]
 #![warn(unused_crate_dependencies)]
 
-use std::path::Path;
+// Re-export the shared module as `core` for easier use
+pub use pocket_relay_client_shared as core;
 
 use crate::ui::show_error;
 use config::read_config_file;
+use core::{api::create_http_client, api::read_client_identity, reqwest};
 use hosts::HostEntryGuard;
 use log::error;
-use pocket_relay_client_shared::{
-    api::{create_http_client, read_client_identity},
-    reqwest,
-};
+use std::path::Path;
 use ui::show_confirm;
 
 mod config;

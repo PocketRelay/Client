@@ -2,16 +2,16 @@ use super::show_error;
 use crate::{
     config::{write_config_file, ClientConfig},
     constants::{ICON_BYTES, WINDOW_TITLE},
+    core::{
+        api::{lookup_server, LookupData, LookupError},
+        reqwest,
+    },
     servers::start_all_servers,
     update,
 };
 use futures::FutureExt;
 use ngd::NwgUi;
 use nwg::{CheckBoxState, NativeUi};
-use pocket_relay_client_shared::{
-    api::{lookup_server, LookupData, LookupError},
-    reqwest,
-};
 use std::cell::RefCell;
 use tokio::task::JoinHandle;
 
@@ -118,9 +118,9 @@ impl App {
             .borrow_mut()
             .take()
             // Flatten on the join result
-            .and_then(|task| task.now_or_never())
+            .and_then(FutureExt::now_or_never)
             // Flatten join failure errors (Out of our control)
-            .and_then(|inner| inner.ok());
+            .and_then(Result::ok);
 
         let result = match result {
             Some(value) => value,

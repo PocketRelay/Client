@@ -1,5 +1,4 @@
-use crate::config::ClientConfig;
-use pocket_relay_client_shared::reqwest;
+use crate::{config::ClientConfig, core::reqwest};
 
 // Iced UI variant
 #[cfg(feature = "iced")]

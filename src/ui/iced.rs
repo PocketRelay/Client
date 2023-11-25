@@ -1,8 +1,12 @@
-use super::show_error;
 use crate::{
     config::{write_config_file, ClientConfig},
     constants::{ICON_BYTES, WINDOW_TITLE},
+    core::{
+        api::{lookup_server, LookupData, LookupError},
+        reqwest,
+    },
     servers::start_all_servers,
+    ui::show_error,
     update,
 };
 use iced::{
@@ -14,10 +18,6 @@ use iced::{
     },
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
-};
-use pocket_relay_client_shared::{
-    api::{lookup_server, LookupData, LookupError},
-    reqwest,
 };
 
 /// The window size

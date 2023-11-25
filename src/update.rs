@@ -2,14 +2,14 @@
 
 use crate::{
     constants::{APP_VERSION, GITHUB_REPOSITORY},
+    core::{
+        reqwest,
+        update::{download_latest_release, get_latest_release},
+        Version,
+    },
     ui::{show_confirm, show_error, show_info},
 };
 use log::{debug, error};
-use pocket_relay_client_shared::{
-    reqwest,
-    update::{download_latest_release, get_latest_release},
-    Version,
-};
 use std::{env::current_exe, process::exit};
 
 /// Handles the updating process

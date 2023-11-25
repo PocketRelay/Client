@@ -1,6 +1,8 @@
-use crate::ui::show_error;
+use crate::{
+    core::{reqwest, servers::*, Url},
+    ui::show_error,
+};
 use log::error;
-use pocket_relay_client_shared::{reqwest, servers::*, Url};
 use std::sync::Arc;
 
 /// Starts all the servers in their own tasks
