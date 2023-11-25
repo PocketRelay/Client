@@ -8,8 +8,10 @@ use crate::{
 use futures::FutureExt;
 use ngd::NwgUi;
 use nwg::{CheckBoxState, NativeUi};
-use pocket_relay_client_shared::api::{lookup_server, LookupData, LookupError};
-use reqwest::Client;
+use pocket_relay_client_shared::{
+    api::{lookup_server, LookupData, LookupError},
+    reqwest,
+};
 use std::cell::RefCell;
 use tokio::task::JoinHandle;
 
@@ -82,7 +84,7 @@ pub struct App {
     connect_task: RefCell<Option<JoinHandle<Result<LookupData, LookupError>>>>,
 
     /// Http client for sending requests
-    http_client: Client,
+    http_client: reqwest::Client,
 }
 
 impl App {
@@ -158,7 +160,7 @@ impl App {
     }
 }
 
-pub fn init(config: Option<ClientConfig>, client: Client) {
+pub fn init(config: Option<ClientConfig>, client: reqwest::Client) {
     // Create tokio async runtime
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

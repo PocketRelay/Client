@@ -2,16 +2,19 @@
     all(target_os = "windows", not(debug_assertions),),
     windows_subsystem = "windows"
 )]
+#![warn(unused_crate_dependencies)]
 
 use std::path::Path;
 
+use crate::ui::show_error;
 use config::read_config_file;
 use hosts::HostEntryGuard;
 use log::error;
-use pocket_relay_client_shared::api::{create_http_client, read_client_identity};
-use reqwest::Client;
-
-use crate::ui::show_error;
+use pocket_relay_client_shared::{
+    api::{create_http_client, read_client_identity},
+    reqwest,
+};
+use ui::show_confirm;
 
 mod config;
 mod constants;
@@ -25,14 +28,21 @@ fn main() {
         .filter_module("pocket_relay_client", log::LevelFilter::Debug)
         .init();
 
-    let _host_guard: HostEntryGuard = HostEntryGuard::apply();
+    // Attempt to apply the hosts file modification guard
+    let _host_guard: Option<HostEntryGuard> = HostEntryGuard::apply();
 
     let config: Option<config::ClientConfig> = read_config_file();
 
     // Load the client identity
     let mut identity: Option<reqwest::Identity> = None;
     let identity_file = Path::new("pocket-relay-identity.p12");
-    if identity_file.exists() && identity_file.is_file() {
+    if identity_file.exists()
+        && identity_file.is_file()
+        && show_confirm(
+            "Found client identity",
+            "Detected client identity pocket-relay-identity.p12, would you like to use this identity?",
+        )
+    {
         identity = match read_client_identity(identity_file) {
             Ok(value) => Some(value),
             Err(err) => {
@@ -43,7 +53,8 @@ fn main() {
         };
     }
 
-    let client: Client = create_http_client(identity).expect("Failed to create HTTP client");
+    let client: reqwest::Client =
+        create_http_client(identity).expect("Failed to create HTTP client");
 
     // Initialize the UI
     ui::init(config, client);

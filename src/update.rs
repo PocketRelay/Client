@@ -6,6 +6,7 @@ use crate::{
 };
 use log::{debug, error};
 use pocket_relay_client_shared::{
+    reqwest,
     update::{download_latest_release, get_latest_release},
     Version,
 };

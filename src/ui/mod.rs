@@ -1,6 +1,5 @@
 use crate::config::ClientConfig;
-use native_dialog::MessageDialog;
-use reqwest::Client;
+use pocket_relay_client_shared::reqwest;
 
 // Iced UI variant
 #[cfg(feature = "iced")]
@@ -12,7 +11,7 @@ pub mod native;
 /// Wrapper around the init functions for the different
 /// UI variants based on the enabled features
 #[inline(always)]
-pub fn init(config: Option<ClientConfig>, client: Client) {
+pub fn init(config: Option<ClientConfig>, client: reqwest::Client) {
     #[cfg(feature = "iced")]
     {
         iced::init(config, client)
@@ -23,8 +22,45 @@ pub fn init(config: Option<ClientConfig>, client: Client) {
     }
 }
 
+#[cfg(feature = "native")]
+#[inline]
 pub fn show_info(title: &str, text: &str) {
-    MessageDialog::new()
+    native_windows_gui::simple_message(title, text);
+}
+
+#[cfg(feature = "native")]
+#[inline]
+pub fn show_error(title: &str, text: &str) {
+    native_windows_gui::error_message(title, text);
+}
+
+#[cfg(feature = "native")]
+pub fn show_warning(title: &str, text: &str) {
+    let params = native_windows_gui::MessageParams {
+        title,
+        content: text,
+        buttons: native_windows_gui::MessageButtons::Ok,
+        icons: native_windows_gui::MessageIcons::Warning,
+    };
+
+    native_windows_gui::message(&params);
+}
+
+#[cfg(feature = "native")]
+pub fn show_confirm(title: &str, text: &str) -> bool {
+    let params = native_windows_gui::MessageParams {
+        title,
+        content: text,
+        buttons: native_windows_gui::MessageButtons::YesNo,
+        icons: native_windows_gui::MessageIcons::Question,
+    };
+
+    native_windows_gui::message(&params) == native_windows_gui::MessageChoice::Yes
+}
+
+#[cfg(not(feature = "native"))]
+pub fn show_info(title: &str, text: &str) {
+    native_dialog::MessageDialog::new()
         .set_title(title)
         .set_text(text)
         .set_type(native_dialog::MessageType::Info)
@@ -32,8 +68,9 @@ pub fn show_info(title: &str, text: &str) {
         .unwrap()
 }
 
+#[cfg(not(feature = "native"))]
 pub fn show_error(title: &str, text: &str) {
-    MessageDialog::new()
+    native_dialog::MessageDialog::new()
         .set_title(title)
         .set_text(text)
         .set_type(native_dialog::MessageType::Error)
@@ -41,8 +78,19 @@ pub fn show_error(title: &str, text: &str) {
         .unwrap()
 }
 
+#[cfg(not(feature = "native"))]
+pub fn show_warning(title: &str, text: &str) {
+    native_dialog::MessageDialog::new()
+        .set_title(title)
+        .set_text(text)
+        .set_type(native_dialog::MessageType::Warning)
+        .show_alert()
+        .unwrap()
+}
+
+#[cfg(not(feature = "native"))]
 pub fn show_confirm(title: &str, text: &str) -> bool {
-    MessageDialog::new()
+    native_dialog::MessageDialog::new()
         .set_title(title)
         .set_text(text)
         .set_type(native_dialog::MessageType::Info)

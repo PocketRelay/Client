@@ -1,7 +1,10 @@
 //! Hosts module providing host file modification functionality
 
-use crate::constants::{HOSTS_PATH, HOST_KEY, HOST_VALUE};
-use log::{debug, error};
+use crate::{
+    constants::{HOSTS_PATH, HOST_KEY, HOST_VALUE},
+    ui::show_warning,
+};
+use log::{debug, error, warn};
 use std::{
     fs::{read_to_string, write},
     io::{self, ErrorKind},
@@ -14,10 +17,14 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 enum HostsError {
     /// Hosts file doesn't exist
-    #[error("Missing hosts file")]
+    #[error("Missing system hosts file")]
     FileMissing,
     /// Missing admin permission to access file
-    #[error("Missing permission to modify hosts file. Ensure this program is running as admin")]
+    #[error(
+        "Missing permission to modify hosts file. Ensure this program is running as admin\n\n\
+        You can ignore this warning if you have manually modified your hosts file to include \
+        the redirection from gosredirector.ea.com to 127.0.0.1"
+    )]
     PermissionsError,
     /// Failed to read the hosts file
     #[error(transparent)]
@@ -27,18 +34,23 @@ enum HostsError {
     NonUtf8(#[from] FromUtf8Error),
 }
 
-/// Guard structure that applies the host entry then
+/// Guard structure that applies the host file entry then
 /// removes the host entry once the guard is dropped
 pub struct HostEntryGuard;
 
 impl HostEntryGuard {
-    pub fn apply() -> Self {
-        if let Err(err) = Self::apply_entry() {
-            error!("Failed to apply host entry: {}", err);
-        } else {
-            debug!("Applied host modificaiton")
+    pub fn apply() -> Option<Self> {
+        match Self::apply_entry() {
+            Ok(value) => {
+                debug!("Applied host modificaiton");
+                Some(value)
+            }
+            Err(err) => {
+                show_warning("Failed to apply host modification", &err.to_string());
+                warn!("Failed to apply host entry: {}", err);
+                None
+            }
         }
-        Self
     }
 
     fn read_hosts_file() -> Result<String, HostsError> {
@@ -52,7 +64,7 @@ impl HostEntryGuard {
         Ok(text)
     }
 
-    fn apply_entry() -> Result<(), HostsError> {
+    fn apply_entry() -> Result<Self, HostsError> {
         let host_line = format!("{} {}", HOST_VALUE, HOST_KEY);
 
         let output = Self::read_hosts_file()?
@@ -69,7 +81,7 @@ impl HostEntryGuard {
 
         let path = Path::new(HOSTS_PATH);
         write(path, output)?;
-        Ok(())
+        Ok(Self)
     }
 
     fn remove_entry() -> Result<(), HostsError> {

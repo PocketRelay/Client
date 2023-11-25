@@ -15,13 +15,15 @@ use iced::{
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
-use pocket_relay_client_shared::api::{lookup_server, LookupData, LookupError};
-use reqwest::Client;
+use pocket_relay_client_shared::{
+    api::{lookup_server, LookupData, LookupError},
+    reqwest,
+};
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 200);
 
-pub fn init(config: Option<ClientConfig>, client: Client) {
+pub fn init(config: Option<ClientConfig>, client: reqwest::Client) {
     App::run(Settings {
         window: window::Settings {
             icon: icon::from_file_data(ICON_BYTES, None).ok(),
@@ -40,7 +42,7 @@ struct App {
     lookup_result: LookupState,
     remember: bool,
     target: String,
-    http_client: Client,
+    http_client: reqwest::Client,
 }
 
 /// Messages used for updating the game state
@@ -74,7 +76,7 @@ enum LookupState {
 impl Application for App {
     type Message = AppMessage;
     type Executor = executor::Default;
-    type Flags = (Option<ClientConfig>, Client);
+    type Flags = (Option<ClientConfig>, reqwest::Client);
     type Theme = Theme;
 
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {

@@ -1,11 +1,10 @@
 use crate::ui::show_error;
 use log::error;
-use pocket_relay_client_shared::{servers::*, Url};
-use reqwest::Client;
+use pocket_relay_client_shared::{reqwest, servers::*, Url};
 use std::sync::Arc;
 
 /// Starts all the servers in their own tasks
-pub fn start_all_servers(http_client: Client, base_url: Arc<Url>) {
+pub fn start_all_servers(http_client: reqwest::Client, base_url: Arc<Url>) {
     // Stop existing servers and tasks if they are running
     stop_server_tasks();
 
