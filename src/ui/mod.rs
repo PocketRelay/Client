@@ -10,7 +10,7 @@ pub mod native;
 /// Title used for created windows
 pub const WINDOW_TITLE: &str = concat!("Pocket Relay Client v", env!("CARGO_PKG_VERSION"));
 /// Window icon bytes
-pub const ICON_BYTES: &[u8] = include_bytes!("../resources/assets/icon.ico");
+pub const ICON_BYTES: &[u8] = include_bytes!("../resources/icon.ico");
 
 /// Wrapper around the init functions for the different
 /// UI variants based on the enabled features
