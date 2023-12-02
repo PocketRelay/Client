@@ -44,12 +44,12 @@ pub async fn update(http_client: reqwest::Client) {
         }
     };
 
-    let latest_tag = latest_release
+    let latest_version = latest_release
         .tag_name
-        .strip_prefix('v')
-        .unwrap_or(&latest_release.tag_name);
+        .trim_start_matches('v')
+        .parse::<Version>();
 
-    let latest_version = match Version::parse(latest_tag) {
+    let latest_version = match latest_version {
         Ok(value) => value,
         Err(err) => {
             error!("Failed to parse version of latest release: {}", err);
