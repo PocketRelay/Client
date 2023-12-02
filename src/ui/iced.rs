@@ -56,8 +56,6 @@ enum AppMessage {
     LookupState(LookupState),
     /// The remember checkbox button has changed
     RememberChanged(bool),
-    /// Message that doesn't do anything
-    Noop,
 }
 
 /// Different states that lookup process can be in
@@ -139,8 +137,6 @@ impl Application for App {
 
             // Lookup result changed
             AppMessage::LookupState(value) => {
-                let mut command = Command::none();
-
                 if let LookupState::Success(value) = &value {
                     // Start all the servers
                     start_all_servers(self.http_client.clone(), value.url.clone());
@@ -149,20 +145,15 @@ impl Application for App {
                     if self.remember {
                         let connection_url = value.url.to_string();
 
-                        command = Command::perform(
-                            write_config_file(ClientConfig { connection_url }),
-                            |_| AppMessage::Noop,
-                        )
+                        write_config_file(ClientConfig { connection_url });
                     }
                 }
 
                 self.lookup_result = value;
-                return command;
             }
 
             // Remember value changed
             AppMessage::RememberChanged(value) => self.remember = value,
-            AppMessage::Noop => {}
         }
         Command::none()
     }

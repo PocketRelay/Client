@@ -139,9 +139,8 @@ impl App {
                 // Save the connection URL
                 if remember {
                     let connection_url = result.url.to_string();
-                    tokio::spawn(async move {
-                        write_config_file(ClientConfig { connection_url }).await;
-                    });
+
+                    write_config_file(ClientConfig { connection_url });
                 }
 
                 let text = format!(

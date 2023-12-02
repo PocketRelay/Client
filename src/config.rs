@@ -17,6 +17,7 @@ pub fn config_path() -> PathBuf {
     parent.join(CONFIG_FILE_NAME)
 }
 
+/// Reads the [`ClientConfig`] from the config file if one is present
 pub fn read_config_file() -> Option<ClientConfig> {
     let file_path = config_path();
     if !file_path.exists() {
@@ -44,7 +45,9 @@ pub fn read_config_file() -> Option<ClientConfig> {
     Some(config)
 }
 
-pub async fn write_config_file(config: ClientConfig) {
+/// Writes the provided `config` to the config file, this will create a new
+/// file if one is not present
+pub fn write_config_file(config: ClientConfig) {
     let file_path = config_path();
     let bytes = match serde_json::to_vec(&config) {
         Ok(value) => value,
@@ -54,7 +57,7 @@ pub async fn write_config_file(config: ClientConfig) {
         }
     };
     debug!("Writing config file");
-    if let Err(err) = tokio::fs::write(file_path, bytes).await {
+    if let Err(err) = std::fs::write(file_path, bytes) {
         show_error("Failed to save client config", &err.to_string());
     }
 }
