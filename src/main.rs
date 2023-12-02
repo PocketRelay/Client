@@ -16,11 +16,13 @@ use std::path::Path;
 use ui::show_confirm;
 
 mod config;
-mod constants;
 mod hosts;
 mod servers;
 mod ui;
 mod update;
+
+/// Application crate version string
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     env_logger::builder()

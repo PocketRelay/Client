@@ -1,7 +1,10 @@
-use crate::{constants::CONFIG_FILE_NAME, ui::show_error};
+use crate::ui::show_error;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{env::current_exe, path::PathBuf};
+
+/// Name of the file that stores saved pocket relay configuration info
+pub const CONFIG_FILE_NAME: &str = "pocket-relay-client.json";
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClientConfig {

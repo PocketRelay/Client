@@ -1,9 +1,6 @@
 //! Hosts module providing host file modification functionality
 
-use crate::{
-    constants::{HOSTS_PATH, HOST_KEY, HOST_VALUE},
-    ui::show_warning,
-};
+use crate::ui::show_warning;
 use log::{debug, error, warn};
 use std::{
     fs::{read_to_string, write},
@@ -12,6 +9,17 @@ use std::{
     string::FromUtf8Error,
 };
 use thiserror::Error;
+
+/// The host address to redirect in the hosts file
+pub const HOST_KEY: &str = "gosredirector.ea.com";
+/// Host address target (Localhost)
+pub const HOST_VALUE: &str = "127.0.0.1";
+/// The path to the system hosts file on windows devices
+#[cfg(target_family = "windows")]
+pub const HOSTS_PATH: &str = "C:/Windows/System32/drivers/etc/hosts";
+/// The path to the system hosts file on unix devices
+#[cfg(target_family = "unix")]
+pub const HOSTS_PATH: &str = "/etc/hosts";
 
 /// Errors that could occur while working with the hosts file
 #[derive(Debug, Error)]

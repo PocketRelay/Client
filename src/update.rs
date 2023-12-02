@@ -1,16 +1,19 @@
 //! Updater module for providing auto-updating functionality
 
 use crate::{
-    constants::{APP_VERSION, GITHUB_REPOSITORY},
     core::{
         reqwest,
         update::{download_latest_release, get_latest_release},
         Version,
     },
     ui::{show_confirm, show_error, show_info},
+    APP_VERSION,
 };
 use log::{debug, error};
 use std::{env::current_exe, process::exit};
+
+/// The GitHub repository to use for releases
+pub const GITHUB_REPOSITORY: &str = "PocketRelay/Client";
 
 /// Handles the updating process
 pub async fn update(http_client: reqwest::Client) {

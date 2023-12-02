@@ -1,12 +1,12 @@
 use super::show_error;
 use crate::{
     config::{write_config_file, ClientConfig},
-    constants::{ICON_BYTES, WINDOW_TITLE},
     core::{
         api::{lookup_server, LookupData, LookupError},
         reqwest,
     },
     servers::start_all_servers,
+    ui::{ICON_BYTES, WINDOW_TITLE},
     update,
 };
 use futures::FutureExt;
