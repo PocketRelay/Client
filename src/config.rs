@@ -1,20 +1,24 @@
 use crate::{constants::CONFIG_FILE_NAME, ui::show_error};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::env::current_exe;
+use std::{env::current_exe, path::PathBuf};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClientConfig {
     pub connection_url: String,
 }
 
-pub fn read_config_file() -> Option<ClientConfig> {
-    let current_path = current_exe().unwrap();
+/// Provides a [`PathBuf`] to the configuration file
+pub fn config_path() -> PathBuf {
+    let current_path = current_exe().expect("Failed to find exe path");
     let parent = current_path
         .parent()
         .expect("Missing parent directory to current exe path");
+    parent.join(CONFIG_FILE_NAME)
+}
 
-    let file_path = parent.join(CONFIG_FILE_NAME);
+pub fn read_config_file() -> Option<ClientConfig> {
+    let file_path = config_path();
     if !file_path.exists() {
         return None;
     }
@@ -41,13 +45,7 @@ pub fn read_config_file() -> Option<ClientConfig> {
 }
 
 pub async fn write_config_file(config: ClientConfig) {
-    let current_path = current_exe().unwrap();
-    let parent = current_path
-        .parent()
-        .expect("Missing parent directory to current exe path");
-
-    let file_path = parent.join(CONFIG_FILE_NAME);
-
+    let file_path = config_path();
     let bytes = match serde_json::to_vec(&config) {
         Ok(value) => value,
         Err(err) => {
@@ -55,9 +53,7 @@ pub async fn write_config_file(config: ClientConfig) {
             return;
         }
     };
-
     debug!("Writing config file");
-
     if let Err(err) = tokio::fs::write(file_path, bytes).await {
         show_error("Failed to save client config", &err.to_string());
     }
