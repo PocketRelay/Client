@@ -31,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.file_name }}
-          path: "./backend/target/debug/${{ matrix.file }}"
+          path: "./target/debug/${{ matrix.file }}"
