@@ -1,33 +1,89 @@
+
 # Pocket Relay Client
 
 ![License](https://img.shields.io/github/license/PocketRelay/Client?style=for-the-badge)
 
-## ❔What
+| Normal                                | Native                                              |
+| ------------------------------------- | --------------------------------------------------- |
+| ![Client](./pictures/client-base.png) | ![Client Native](./pictures/client-base-native.png) |
 
-This is a tool for Redirecting your local Mass Effect 3 clients to an Unofficial server. The
-connection string you put in will be connected to by the client and then used to redirect
-traffic using the system hosts file
+## ❔ What
 
-## ❔Usage Guide
+This is a client tool which allows Mass Effect 3 clients to connect to unofficial servers rather than the official EA servers. This tool allows players to play on [Pocket Relay](https://pocket-relay.pages.dev/) servers
 
-For a guide on using this program see the guide [Here](https://pocket-relay.pages.dev/guide/client/)
+For a guide on using this program see the guide [Here](https://pocket-relay.pages.dev/docs/client/joining)
+
+## 📥 Downloads
+
+Below are some quick download links to download the latest versions, the client tool contains a built in auto-updater so you don't have to return to this website every time a new release is available.
+
+| Variant | Download Link                                                                                             |
+| ------- | --------------------------------------------------------------------------------------------------------- |
+| Normal  | [Download](https://github.com/PocketRelay/Client/releases/latest/download/pocket-relay-client-native.exe) |
+| Native  | [Download](https://github.com/PocketRelay/Client/releases/latest/download/pocket-relay-client-native.exe) |
 
 
-## ❔How
 
-This tool uses the system hosts file at `C:/Windows/System32/drivers/etc/hosts` and adds
-`127.0.0.1 gosredirector.ea.com` which tells your computer to send all the traffic that
-would normally go to `gosredirector.ea.com` to your local computer where its then instead handled by the client tool
+## 🚀 Building
+
+Guide for manually compiling the client executable from source
+
+### Requirements
+
+- **Rust & Cargo** Rust version 1.70.0 or newer is required in order to compile the client you can install both of these using Rustup which you can install using the guide Here
+- **Git** Git is required to clone the github repository to your system. You can ignore this step if you manually download the latest source archive from github directly Here
+
+### Combined Answer
+
+If you want skip all the steps and just have a list of commands to paste in for the default setup you can paste the following command into your terminal. (This is using the bash syntax for multiple commands)
+
+```shell
+git clone --depth 1 https://github.com/PocketRelay/Client.git pocket-relay-client && cd pocket-relay-client && cargo build --release
+```
+
+### 1) Clone Repository
+
+> If you have already directly downloaded the repository source code from GitHub you can skip this step.
+
+First you will need to clone the GitHub repository for the client. The following command will clone only the latest code changes from the GitHub repository
+
+```shell
+git clone --depth 1 https://github.com/PocketRelay/Client.git pocket-relay-client
+```
+
+### 2) Directory
+
+In order to build the client using commands you will need to open the client source code directory that you’ve just cloned within your terminal. You can do that using the cd command. The following command will set your current directory to the client source code:
+
+
+```shell
+cd pocket-relay-client
+```
+
+> The above command will only work if you run it in the same place that you’ve cloned the repository to
+
+### 3) Compiling
+
+Now to compile the client source into a binary that you can run you need to run the following command:
+
+```shell
+cargo build --release
+```
+
+### 4) Client binary
+
+Once the client building finishes you can now find the client executable which will be located in the following folder
+
+```
+target/release
+```
+
+> If you are on Windows the file will be named pocket-relay-client.exe and if you are on Linux it will be named pocket-relay-client
+
 
 ## 🔌 Credits
 
-This repository contains files from [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) in the /legacy directory as they were embedded in previous
-versions of the client in order to disable certificate verification 
-
-## EA / BioWare Notice
-
-All code in this repository is authored by Jacobtread and none is taken from BioWare. This code has been 
-produced from studying the protocol of the official servers and emulating its functionality. This program is in no way or form supported, endorsed, or provided by BioWare or Electronic Arts.
+This repository contains files from [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) in the /legacy directory as they were embedded in previous versions of the client in order to disable certificate verification 
 
 ## 🧾 License
 
