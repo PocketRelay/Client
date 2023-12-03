@@ -7,7 +7,7 @@ fn main() {
         } else {
             res.set_manifest(include_str!("./Manifest.xml"));
         }
-        res.set_icon("src/resources/assets/icon.ico");
+        res.set_icon("src/resources/icon.ico");
         res.compile().unwrap();
     }
 }
