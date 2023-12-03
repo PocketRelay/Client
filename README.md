@@ -2,6 +2,7 @@
 # Pocket Relay Client
 
 ![License](https://img.shields.io/github/license/PocketRelay/Client?style=for-the-badge)
+![Build](https://img.shields.io/github/actions/workflow/status/PocketRelay/Client/build.yml?style=for-the-badge)
 
 | Normal                                | Native                                              |
 | ------------------------------------- | --------------------------------------------------- |
