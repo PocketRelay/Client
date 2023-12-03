@@ -4,6 +4,10 @@
 ![License](https://img.shields.io/github/license/PocketRelay/Client?style=for-the-badge)
 ![Build](https://img.shields.io/github/actions/workflow/status/PocketRelay/Client/build.yml?style=for-the-badge)
 
+[Discord Server (discord.gg/yvycWW8RgR)](https://discord.gg/yvycWW8RgR)
+[Website (pocket-relay.pages.dev)](https://pocket-relay.pages.dev/)
+
+
 | Normal                                | Native                                              |
 | ------------------------------------- | --------------------------------------------------- |
 | ![Client](./pictures/client-base.png) | ![Client Native](./pictures/client-base-native.png) |
