@@ -14,6 +14,15 @@ use std::{env::current_exe, process::exit};
 
 /// The GitHub repository to use for releases
 pub const GITHUB_REPOSITORY: &str = "PocketRelay/Client";
+// Windows non native asset name
+#[cfg(all(target_family = "windows", not(feature = "native")))]
+pub const ASSET_NAME: &str = "pocket-relay-client.exe";
+// Windows native asset name
+#[cfg(all(target_family = "windows", feature = "native"))]
+pub const ASSET_NAME: &str = "pocket-relay-client-native.exe";
+// Linux asset name
+#[cfg(target_family = "unix")]
+pub const ASSET_NAME: &str = "pocket-relay-client-linux";
 
 /// Handles the updating process
 pub async fn update(http_client: reqwest::Client) {
@@ -74,22 +83,10 @@ pub async fn update(http_client: reqwest::Client) {
 
     debug!("New version is available ({})", latest_version);
 
-    // Windows non native asset name
-    #[cfg(all(target_family = "windows", not(feature = "native")))]
-    let asset_name = "pocket-relay-client.exe";
-
-    // Windows native asset name
-    #[cfg(all(target_family = "windows", feature = "native"))]
-    let asset_name = "pocket-relay-client-native.exe";
-
-    // Linux asset name
-    #[cfg(target_family = "unix")]
-    let asset_name = "pocket-relay-client-linux";
-
     let asset = match latest_release
         .assets
         .iter()
-        .find(|asset| asset.name == asset_name)
+        .find(|asset| asset.name == ASSET_NAME)
     {
         Some(value) => value,
         None => {
