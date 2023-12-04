@@ -12,6 +12,16 @@
 | ------------------------------------- | --------------------------------------------------- |
 | ![Client](./pictures/client-base.png) | ![Client Native](./pictures/client-base-native.png) |
 
+## Table of Contents
+
+- [What](#❔-what) What Pocket Relay client is
+- [Downloads](#📥-downloads) Download links to the client
+- [Building](#🚀-building) Instructions for building manually
+- [Credits](#🔌-credits) Project credits
+- [License](#🧾-license) Project license
+
+
+
 ## ❔ What
 
 This is a client tool which allows Mass Effect 3 clients to connect to unofficial servers rather than the official EA servers. This tool allows players to play on [Pocket Relay](https://pocket-relay.pages.dev/) servers
@@ -89,6 +99,10 @@ target/release
 ## 🔌 Credits
 
 This repository contains files from [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) in the /legacy directory as they were embedded in previous versions of the client in order to disable certificate verification 
+
+## 📌 EA / BioWare Notice
+
+The **Pocket Relay** software in all its forms are in no way or form supported, endorsed, or provided by BioWare or Electronic Arts. 
 
 ## 🧾 License
 
