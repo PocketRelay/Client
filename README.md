@@ -4,8 +4,7 @@
 ![License](https://img.shields.io/github/license/PocketRelay/Client?style=for-the-badge)
 ![Build](https://img.shields.io/github/actions/workflow/status/PocketRelay/Client/build.yml?style=for-the-badge)
 
-[Discord Server (discord.gg/yvycWW8RgR)](https://discord.gg/yvycWW8RgR)
-[Website (pocket-relay.pages.dev)](https://pocket-relay.pages.dev/)
+[Discord Server (discord.gg/yvycWW8RgR)](https://discord.gg/yvycWW8RgR) | [Website (pocket-relay.pages.dev)](https://pocket-relay.pages.dev/)
 
 
 | Normal                                | Native                                              |
@@ -19,8 +18,6 @@
 - [Building](#🚀-building) Instructions for building manually
 - [Credits](#🔌-credits) Project credits
 - [License](#🧾-license) Project license
-
-
 
 ## ❔ What
 
@@ -100,9 +97,9 @@ target/release
 
 This repository contains files from [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) in the /legacy directory as they were embedded in previous versions of the client in order to disable certificate verification 
 
-## 📌 EA / BioWare Notice
+## 🌐 EA / BioWare Notice
 
-The **Pocket Relay** software in all its forms are in no way or form supported, endorsed, or provided by BioWare or Electronic Arts. 
+The **Pocket Relay** software, in all its forms, is not supported, endorsed, or provided by BioWare or Electronic Arts.
 
 ## 🧾 License
 
