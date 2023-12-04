@@ -23,6 +23,11 @@ use iced::{
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 200);
 
+/// Initializes the user interface
+///
+/// ## Arguments
+/// * `config` - The client config to use
+/// * `client` - The HTTP client to use
 pub fn init(config: Option<ClientConfig>, client: reqwest::Client) {
     App::run(Settings {
         window: window::Settings {
@@ -38,10 +43,15 @@ pub fn init(config: Option<ClientConfig>, client: reqwest::Client) {
     .unwrap();
 }
 
+/// Iced app
 struct App {
+    /// Result of a connection lookup
     lookup_result: LookupState,
+    /// Whether to remember the connection URL
     remember: bool,
+    /// The current connection URL
     target: String,
+    /// Http client for sending requests
     http_client: reqwest::Client,
 }
 

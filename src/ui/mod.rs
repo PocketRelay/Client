@@ -1,5 +1,3 @@
-use crate::{config::ClientConfig, core::reqwest};
-
 // Iced UI variant
 #[cfg(feature = "iced")]
 pub mod iced;
@@ -7,37 +5,43 @@ pub mod iced;
 #[cfg(feature = "native")]
 pub mod native;
 
+#[cfg(feature = "iced")]
+pub use iced::init;
+#[cfg(all(feature = "native", not(feature = "iced")))]
+pub use native::init;
+
 /// Title used for created windows
 pub const WINDOW_TITLE: &str = concat!("Pocket Relay Client v", env!("CARGO_PKG_VERSION"));
 /// Window icon bytes
 pub const ICON_BYTES: &[u8] = include_bytes!("../resources/icon.ico");
 
-/// Wrapper around the init functions for the different
-/// UI variants based on the enabled features
-#[inline(always)]
-pub fn init(config: Option<ClientConfig>, client: reqwest::Client) {
-    #[cfg(feature = "iced")]
-    {
-        iced::init(config, client)
-    }
-    #[cfg(feature = "native")]
-    {
-        native::init(config, client)
-    }
-}
-
+/// Shows a info message to the user.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(feature = "native")]
 #[inline]
 pub fn show_info(title: &str, text: &str) {
     native_windows_gui::simple_message(title, text);
 }
 
+/// Shows an error message to the user.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(feature = "native")]
 #[inline]
 pub fn show_error(title: &str, text: &str) {
     native_windows_gui::error_message(title, text);
 }
 
+/// Shows an warning message to the user.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(feature = "native")]
 pub fn show_warning(title: &str, text: &str) {
     let params = native_windows_gui::MessageParams {
@@ -50,6 +54,12 @@ pub fn show_warning(title: &str, text: &str) {
     native_windows_gui::message(&params);
 }
 
+/// Shows a confirmation message to the user returning
+/// the choice that the user made.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(feature = "native")]
 pub fn show_confirm(title: &str, text: &str) -> bool {
     let params = native_windows_gui::MessageParams {
@@ -62,6 +72,11 @@ pub fn show_confirm(title: &str, text: &str) -> bool {
     native_windows_gui::message(&params) == native_windows_gui::MessageChoice::Yes
 }
 
+/// Shows a info message to the user.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(not(feature = "native"))]
 pub fn show_info(title: &str, text: &str) {
     native_dialog::MessageDialog::new()
@@ -72,6 +87,11 @@ pub fn show_info(title: &str, text: &str) {
         .unwrap()
 }
 
+/// Shows an error message to the user.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(not(feature = "native"))]
 pub fn show_error(title: &str, text: &str) {
     native_dialog::MessageDialog::new()
@@ -82,6 +102,11 @@ pub fn show_error(title: &str, text: &str) {
         .unwrap()
 }
 
+/// Shows an warning message to the user.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(not(feature = "native"))]
 pub fn show_warning(title: &str, text: &str) {
     native_dialog::MessageDialog::new()
@@ -92,6 +117,12 @@ pub fn show_warning(title: &str, text: &str) {
         .unwrap()
 }
 
+/// Shows a confirmation message to the user returning
+/// the choice that the user made.
+///
+/// ## Arguments
+/// * `title` - The title for the dialog
+/// * `text`  - The text for the dialog
 #[cfg(not(feature = "native"))]
 pub fn show_confirm(title: &str, text: &str) -> bool {
     native_dialog::MessageDialog::new()

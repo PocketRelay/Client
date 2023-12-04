@@ -6,8 +6,10 @@ use std::{env::current_exe, path::PathBuf};
 /// Name of the file that stores saved pocket relay configuration info
 pub const CONFIG_FILE_NAME: &str = "pocket-relay-client.json";
 
+/// Structure of the configuration file
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClientConfig {
+    /// The saved connection URL to use
     pub connection_url: String,
 }
 
@@ -22,6 +24,7 @@ pub fn config_path() -> PathBuf {
 
 /// Reads the [`ClientConfig`] from the config file if one is present
 pub fn read_config_file() -> Option<ClientConfig> {
+    // Check that the config file exists
     let file_path = config_path();
     if !file_path.exists() {
         return None;
@@ -29,6 +32,7 @@ pub fn read_config_file() -> Option<ClientConfig> {
 
     debug!("Reading config file");
 
+    // Read the config bytes from the file
     let bytes = match std::fs::read(file_path) {
         Ok(value) => value,
         Err(err) => {
@@ -37,15 +41,14 @@ pub fn read_config_file() -> Option<ClientConfig> {
         }
     };
 
-    let config: ClientConfig = match serde_json::from_slice(&bytes) {
-        Ok(value) => value,
+    // Parse the config file bytes
+    match serde_json::from_slice(&bytes) {
+        Ok(value) => Some(value),
         Err(err) => {
             show_error("Failed to parse client config", &err.to_string());
-            return None;
+            None
         }
-    };
-
-    Some(config)
+    }
 }
 
 /// Writes the provided `config` to the config file, this will create a new

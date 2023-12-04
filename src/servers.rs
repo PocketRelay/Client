@@ -6,6 +6,10 @@ use log::error;
 use std::sync::Arc;
 
 /// Starts all the servers in their own tasks
+///
+/// ## Arguments
+/// * `http_client` - The HTTP client to use on the servers
+/// * `base_url`    - The base URL of the connected server
 pub fn start_all_servers(http_client: reqwest::Client, base_url: Arc<Url>) {
     // Stop existing servers and tasks if they are running
     stop_server_tasks();

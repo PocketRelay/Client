@@ -47,6 +47,8 @@ enum HostsError {
 pub struct HostEntryGuard;
 
 impl HostEntryGuard {
+    /// Attempts to apply the [`HostEntryGuard`] returning the guard
+    /// on success
     pub fn apply() -> Option<Self> {
         match Self::apply_entry() {
             Ok(value) => {
@@ -61,6 +63,7 @@ impl HostEntryGuard {
         }
     }
 
+    /// Reads the contents of the hosts file
     fn read_hosts_file() -> Result<String, HostsError> {
         let path = Path::new(HOSTS_PATH);
         if !path.exists() {
@@ -72,6 +75,7 @@ impl HostEntryGuard {
         Ok(text)
     }
 
+    /// Adds the gosredirector.ea.com entry to the hosts file
     fn apply_entry() -> Result<Self, HostsError> {
         let host_line = format!("{} {}", HOST_VALUE, HOST_KEY);
 
@@ -92,6 +96,7 @@ impl HostEntryGuard {
         Ok(Self)
     }
 
+    /// Removes the gosredirector.ea.com entry from the hosts file
     fn remove_entry() -> Result<(), HostsError> {
         let output = Self::read_hosts_file()?
             .lines()

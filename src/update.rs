@@ -10,7 +10,7 @@ use crate::{
     APP_VERSION,
 };
 use log::{debug, error};
-use std::{env::current_exe, process::exit};
+use std::{env::current_exe, path::PathBuf, process::exit};
 
 /// The GitHub repository to use for releases
 pub const GITHUB_REPOSITORY: &str = "PocketRelay/Client";
@@ -24,30 +24,71 @@ pub const ASSET_NAME: &str = "pocket-relay-client-native.exe";
 #[cfg(target_family = "unix")]
 pub const ASSET_NAME: &str = "pocket-relay-client-linux";
 
-/// Handles the updating process
-pub async fn update(http_client: reqwest::Client) {
-    let path = current_exe().expect("Unable to locate executable path");
+/// Paths used by the updater
+pub struct UpdatePaths {
+    /// Path to the file executable file
+    pub exe: PathBuf,
+    /// Temporary path for storing the file while download
+    pub tmp_download: PathBuf,
+    /// Temporary path for moving the old plugin before swapping
+    pub tmp_old: PathBuf,
+}
 
-    let parent = path.parent().expect("Missing exe parent directory");
+impl Default for UpdatePaths {
+    fn default() -> Self {
+        // Locate the executable path
+        let path = current_exe().expect("Unable to locate executable path");
+        // Find the parent directory of the executable
+        let parent = path.parent().expect("Missing exe parent directory");
 
-    let tmp_file = parent.join("pocket-relay-client.exe.tmp-download");
-    let tmp_old = parent.join("pocket-relay-client.exe.tmp-old");
+        Self {
+            exe: path.clone(),
+            tmp_download: parent.join("pocket-relay-client.exe.tmp-download"),
+            tmp_old: parent.join("pocket-relay-client.exe.tmp-old"),
+        }
+    }
+}
 
-    // Remove the old file if it exists
-    if tmp_old.exists() {
-        tokio::fs::remove_file(&tmp_old)
-            .await
-            .expect("Failed to remove old executable");
+impl UpdatePaths {
+    // Removes the temporary paths if they exist
+    pub async fn remove_tmp_paths(&self) -> std::io::Result<()> {
+        if self.tmp_old.exists() {
+            tokio::fs::remove_file(&self.tmp_old).await?;
+        }
+
+        if self.tmp_download.exists() {
+            tokio::fs::remove_file(&self.tmp_download).await?;
+        }
+
+        Ok(())
     }
 
-    // Remove temp download file if it exists
-    if tmp_file.exists() {
-        tokio::fs::remove_file(&tmp_file)
-            .await
-            .expect("Failed to remove temp executable");
+    /// Moves the `plugin` file to `tmp_old` and moves the downloaded
+    /// file from `tmp_download` to `plugin`
+    pub async fn swap_plugin_files(&self) -> std::io::Result<()> {
+        debug!("Swapping plugin files with update");
+
+        // Move the exe to the `tmp_old` path
+        tokio::fs::rename(&self.exe, &self.tmp_old).await?;
+
+        // Move the downloaded plugin to the `exe` path
+        tokio::fs::rename(&self.tmp_download, &self.exe).await?;
+
+        Ok(())
+    }
+}
+
+/// Handles the updating process
+pub async fn update(http_client: reqwest::Client) {
+    let paths = UpdatePaths::default();
+
+    // Remove temporary files if they exist
+    if let Err(err) = paths.remove_tmp_paths().await {
+        error!("Failed to remove temporary files: {}", err);
     }
 
     debug!("Checking for updates");
+
     let latest_release = match get_latest_release(&http_client, GITHUB_REPOSITORY).await {
         Ok(value) => value,
         Err(err) => {
@@ -71,7 +112,8 @@ pub async fn update(http_client: reqwest::Client) {
 
     let current_version = Version::parse(APP_VERSION).expect("Failed to parse app version");
 
-    if latest_version <= current_version {
+    // Don't update if we are already on the latest or an unreleased version
+    if current_version >= latest_version {
         if current_version > latest_version {
             debug!("Future release is installed ({})", current_version);
         } else {
@@ -83,16 +125,13 @@ pub async fn update(http_client: reqwest::Client) {
 
     debug!("New version is available ({})", latest_version);
 
-    let asset = match latest_release
+    let Some(asset) = latest_release
         .assets
         .iter()
         .find(|asset| asset.name == ASSET_NAME)
-    {
-        Some(value) => value,
-        None => {
-            error!("Server release is missing the desired binary, cannot update");
-            return;
-        }
+    else {
+        error!("Server release is missing the desired binary, cannot update");
+        return;
     };
 
     let msg = format!(
@@ -108,34 +147,30 @@ pub async fn update(http_client: reqwest::Client) {
 
     debug!("Downloading release");
 
-    match download_latest_release(&http_client, asset).await {
-        Ok(bytes) => {
-            // Save the downloaded file to the tmp path
-            if let Err(err) = tokio::fs::write(&tmp_file, bytes).await {
-                show_error("Failed to save downloaded update", &err.to_string());
-                return;
-            }
-        }
+    let bytes = match download_latest_release(&http_client, asset).await {
+        Ok(bytes) => bytes,
         Err(err) => {
             show_error("Failed to download", &err.to_string());
 
             // Delete partially downloaded file if present
-            if tmp_file.exists() {
-                let _ = tokio::fs::remove_file(tmp_file).await;
+            if let Err(err) = paths.remove_tmp_paths().await {
+                error!("Failed to remove temporary files: {}", err);
             }
 
             return;
         }
+    };
+
+    // Save the downloaded file to the tmp path
+    if let Err(err) = tokio::fs::write(&paths.tmp_download, bytes).await {
+        show_error("Failed to save downloaded update", &err.to_string());
+        return;
     }
 
-    debug!("Swapping executable files");
-
-    tokio::fs::rename(&path, &tmp_old)
-        .await
-        .expect("Failed to rename executable to temp path");
-    tokio::fs::rename(&tmp_file, path)
-        .await
-        .expect("Failed to rename executable");
+    // Swap the plugin files with the new version
+    if let Err(err) = paths.swap_plugin_files().await {
+        error!("Failed to swap plugin files: {}", err);
+    }
 
     show_info(
         "Update successfull",
