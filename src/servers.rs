@@ -44,6 +44,17 @@ pub fn start_all_servers(http_client: reqwest::Client, base_url: Arc<Url>) {
         }
     });
 
+    // Need to copy the client and base_url so it can be moved into the task
+    let (a, b) = (http_client.clone(), base_url.clone());
+
+    // Spawn the HTTP server
+    spawn_server_task(async move {
+        if let Err(err) = tunnel::start_tunnel(a, b).await {
+            show_error("Failed to start tunnel server", &err.to_string());
+            error!("Failed to start tunnel server: {}", err);
+        }
+    });
+
     // Spawn the QoS server
     spawn_server_task(async move {
         if let Err(err) = qos::start_qos_server().await {

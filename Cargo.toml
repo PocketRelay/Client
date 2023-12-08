@@ -19,7 +19,7 @@ native = ["dep:native-windows-gui", "dep:native-windows-derive", "dep:futures"]
 
 [dependencies]
 # Shared backing library
-pocket-relay-client-shared = { version = "0.1" }
+pocket-relay-client-shared = { version = "0.1", path = "../pocket-relay-client-shared" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
