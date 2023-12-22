@@ -136,7 +136,7 @@ impl App {
         start_all_servers(
             self.http_client.clone(),
             lookup.url.clone(),
-            value.association.clone(),
+            lookup.association.clone(),
         );
 
         let remember = self.remember_checkbox.check_state() == CheckBoxState::Checked;
