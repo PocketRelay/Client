@@ -149,7 +149,11 @@ impl Application for App {
             AppMessage::LookupState(value) => {
                 if let LookupState::Success(value) = &value {
                     // Start all the servers
-                    start_all_servers(self.http_client.clone(), value.url.clone());
+                    start_all_servers(
+                        self.http_client.clone(),
+                        value.url.clone(),
+                        value.association.clone(),
+                    );
 
                     // Save the connection URL
                     if self.remember {

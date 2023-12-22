@@ -10,7 +10,12 @@ use std::sync::Arc;
 /// ## Arguments
 /// * `http_client` - The HTTP client to use on the servers
 /// * `base_url`    - The base URL of the connected server
-pub fn start_all_servers(http_client: reqwest::Client, base_url: Arc<Url>) {
+/// * `association` - Optional association token if supported
+pub fn start_all_servers(
+    http_client: reqwest::Client,
+    base_url: Arc<Url>,
+    association: Arc<Option<String>>,
+) {
     // Stop existing servers and tasks if they are running
     stop_server_tasks();
 
@@ -23,11 +28,11 @@ pub fn start_all_servers(http_client: reqwest::Client, base_url: Arc<Url>) {
     });
 
     // Need to copy the client and base_url so it can be moved into the task
-    let (a, b) = (http_client.clone(), base_url.clone());
+    let (a, b, c) = (http_client.clone(), base_url.clone(), association.clone());
 
     // Spawn the Blaze server
     spawn_server_task(async move {
-        if let Err(err) = blaze::start_blaze_server(a, b).await {
+        if let Err(err) = blaze::start_blaze_server(a, b, c).await {
             show_error("Failed to start blaze server", &err.to_string());
             error!("Failed to start blaze server: {}", err);
         }
@@ -47,9 +52,9 @@ pub fn start_all_servers(http_client: reqwest::Client, base_url: Arc<Url>) {
     // Need to copy the client and base_url so it can be moved into the task
     let (a, b) = (http_client.clone(), base_url.clone());
 
-    // Spawn the HTTP server
+    // Spawn the tunneling server
     spawn_server_task(async move {
-        if let Err(err) = tunnel::start_tunnel(a, b).await {
+        if let Err(err) = tunnel::start_tunnel_server(a, b, association).await {
             show_error("Failed to start tunnel server", &err.to_string());
             error!("Failed to start tunnel server: {}", err);
         }
