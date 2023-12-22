@@ -2555,7 +2555,7 @@ dependencies = [
 
 [[package]]
 name = "pocket-relay-client"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "env_logger",
  "futures",
@@ -2574,7 +2574,7 @@ dependencies = [
 
 [[package]]
 name = "pocket-relay-client-shared"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "blaze-ssl-async",
  "bytes",
