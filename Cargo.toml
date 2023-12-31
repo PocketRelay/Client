@@ -1,6 +1,6 @@
 [package]
 name = "pocket-relay-client"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2021"
 build = "build.rs"
 license = "MIT"
@@ -19,7 +19,7 @@ native = ["dep:native-windows-gui", "dep:native-windows-derive", "dep:futures"]
 
 [dependencies]
 # Shared backing library
-pocket-relay-client-shared = { version = "0.1" }
+pocket-relay-client-shared = { version = "0.2" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

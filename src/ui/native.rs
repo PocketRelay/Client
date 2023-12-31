@@ -2,6 +2,7 @@ use crate::{
     config::{write_config_file, ClientConfig},
     core::{
         api::{lookup_server, LookupData, LookupError},
+        ctx::ClientContext,
         reqwest,
     },
     servers::start_all_servers,
@@ -12,6 +13,7 @@ use futures::FutureExt;
 use native_windows_derive::NwgUi;
 use native_windows_gui::{init as nwg_init, *};
 use std::cell::RefCell;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 /// Size of the created window
@@ -123,7 +125,7 @@ impl App {
         // Ensure theres actually a result to use
         let Some(result) = result else { return };
 
-        let lookup = match result {
+        let mut lookup = match result {
             Ok(value) => value,
             Err(err) => {
                 self.connection_label.set_text("Failed to connect");
@@ -132,8 +134,14 @@ impl App {
             }
         };
 
+        let ctx = Arc::new(ClientContext {
+            http_client: self.http_client.clone(),
+            base_url: lookup.url.clone(),
+            association: lookup.association.take(),
+        });
+
         // Start the servers
-        start_all_servers(self.http_client.clone(), lookup.url.clone());
+        start_all_servers(ctx);
 
         let remember = self.remember_checkbox.check_state() == CheckBoxState::Checked;
 

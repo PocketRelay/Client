@@ -31,7 +31,7 @@ Below are some quick download links to download the latest versions, the client 
 
 | Variant | Download Link                                                                                             |
 | ------- | --------------------------------------------------------------------------------------------------------- |
-| Normal  | [Download](https://github.com/PocketRelay/Client/releases/latest/download/pocket-relay-client-native.exe) |
+| Normal  | [Download](https://github.com/PocketRelay/Client/releases/latest/download/pocket-relay-client.exe)        |
 | Native  | [Download](https://github.com/PocketRelay/Client/releases/latest/download/pocket-relay-client-native.exe) |
 
 
