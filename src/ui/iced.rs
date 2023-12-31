@@ -2,6 +2,7 @@ use crate::{
     config::{write_config_file, ClientConfig},
     core::{
         api::{lookup_server, LookupData, LookupError},
+        ctx::ClientContext,
         reqwest,
     },
     servers::start_all_servers,
@@ -19,6 +20,7 @@ use iced::{
     window::{self, icon},
     Application, Color, Command, Length, Settings, Theme,
 };
+use std::sync::Arc;
 
 /// The window size
 pub const WINDOW_SIZE: (u32, u32) = (500, 200);
@@ -146,14 +148,16 @@ impl Application for App {
             }
 
             // Lookup result changed
-            AppMessage::LookupState(value) => {
-                if let LookupState::Success(value) = &value {
+            AppMessage::LookupState(mut value) => {
+                if let LookupState::Success(value) = &mut value {
+                    let ctx = Arc::new(ClientContext {
+                        http_client: self.http_client.clone(),
+                        base_url: value.url.clone(),
+                        association: value.association.take(),
+                    });
+
                     // Start all the servers
-                    start_all_servers(
-                        self.http_client.clone(),
-                        value.url.clone(),
-                        value.association.clone(),
-                    );
+                    start_all_servers(ctx);
 
                     // Save the connection URL
                     if self.remember {
