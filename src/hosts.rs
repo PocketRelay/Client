@@ -44,7 +44,11 @@ enum HostsError {
 
 /// Guard structure that applies the host file entry then
 /// removes the host entry once the guard is dropped
-pub struct HostEntryGuard;
+pub struct HostEntryGuard {
+    /// Whether the entry already existed
+    /// (We shouldn't remove the guard one drop)
+    existing: bool,
+}
 
 impl HostEntryGuard {
     /// Attempts to apply the [`HostEntryGuard`] returning the guard
@@ -52,7 +56,11 @@ impl HostEntryGuard {
     pub fn apply() -> Option<Self> {
         match Self::apply_entry() {
             Ok(value) => {
-                debug!("Applied host modificaiton");
+                if value.existing {
+                    debug!("Host modificaiton already applied");
+                } else {
+                    debug!("Applied host modificaiton");
+                }
                 Some(value)
             }
             Err(err) => {
@@ -79,28 +87,35 @@ impl HostEntryGuard {
     fn apply_entry() -> Result<Self, HostsError> {
         let host_line = format!("{} {}", HOST_VALUE, HOST_KEY);
 
-        let output = Self::read_hosts_file()?
-            .lines()
-            .filter(Self::filter_not_host_line)
-            .chain(std::iter::once(host_line.as_str()))
-            // Collect the lines into a string with new lines appended
-            .fold(String::new(), |mut a, b| {
-                a.reserve(b.len() + 1);
-                a.push_str(b);
-                a.push('\n');
-                a
-            });
+        let host_file = Self::read_hosts_file()?;
 
-        let path = Path::new(HOSTS_PATH);
-        write(path, output)?;
-        Ok(Self)
+        // Find an existing entry if present
+        let existing = host_file.lines().any(Self::is_host_line);
+
+        if !existing {
+            let output = Self::read_hosts_file()?
+                .lines()
+                .chain(std::iter::once(host_line.as_str()))
+                // Collect the lines into a string with new lines appended
+                .fold(String::new(), |mut a, b| {
+                    a.reserve(b.len() + 1);
+                    a.push_str(b);
+                    a.push('\n');
+                    a
+                });
+
+            let path = Path::new(HOSTS_PATH);
+            write(path, output)?;
+        }
+
+        Ok(Self { existing })
     }
 
     /// Removes the gosredirector.ea.com entry from the hosts file
     fn remove_entry() -> Result<(), HostsError> {
         let output = Self::read_hosts_file()?
             .lines()
-            .filter(Self::filter_not_host_line)
+            .filter(|line| !Self::is_host_line(line))
             // Collect the lines into a string with new lines appended
             .fold(String::new(), |mut a, b| {
                 a.reserve(b.len() + 1);
@@ -114,12 +129,10 @@ impl HostEntryGuard {
         Ok(())
     }
 
-    /// Filters lines based on whether they are a host redirect
-    /// line entry
-    fn filter_not_host_line(value: &&str) -> bool {
+    fn is_host_line(value: &str) -> bool {
         let value = value.trim();
         if value.is_empty() || value.starts_with('#') || !value.contains(HOST_KEY) {
-            return true;
+            return false;
         }
 
         let value = value
@@ -131,7 +144,7 @@ impl HostEntryGuard {
 
         // Check we still have content and contain host
         if value.is_empty() || !value.contains(HOST_KEY) {
-            return true;
+            return false;
         }
 
         // Splits at whitespace and ensures the first part is the host
@@ -139,12 +152,17 @@ impl HostEntryGuard {
             .split_whitespace()
             .nth(1)
             .is_some_and(|value| value.eq(HOST_KEY));
-        !is_host_line
+        is_host_line
     }
 }
 
 impl Drop for HostEntryGuard {
     fn drop(&mut self) {
+        // Don't remove the entry if it existed before we started
+        if self.existing {
+            return;
+        }
+
         if let Err(err) = Self::remove_entry() {
             error!("Failed to remove host entry: {}", err);
         } else {
