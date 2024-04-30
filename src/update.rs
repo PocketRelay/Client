@@ -173,7 +173,7 @@ pub async fn update(http_client: reqwest::Client) {
     }
 
     show_info(
-        "Update successfull",
+        "Update successful",
         "The client has been updated, restart the client now to use the new version",
     );
 

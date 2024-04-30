@@ -57,9 +57,9 @@ impl HostEntryGuard {
         match Self::apply_entry() {
             Ok(value) => {
                 if value.existing {
-                    debug!("Host modificaiton already applied");
+                    debug!("Host modification already applied");
                 } else {
-                    debug!("Applied host modificaiton");
+                    debug!("Applied host modification");
                 }
                 Some(value)
             }
