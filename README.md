@@ -93,6 +93,36 @@ target/release
 > If you are on Windows the file will be named pocket-relay-client.exe and if you are on Linux it will be named pocket-relay-client
 
 
+## Makefile.toml - Mainly used for maintainers 
+
+This project also includes a Makefile.toml for `cargo make` however its more intended for maintainers only in order to do cross compiling, building multiple versions in parallel, signing builds, etc
+
+> Requires installing https://github.com/sagiegurari/cargo-make
+
+### Building
+
+#### Build Windows & Linux in parallel
+
+```shell
+cargo make -t build-all
+```
+#### Building just Windows
+
+```shell
+cargo make -t build-windows
+```
+
+> [!NOTE]
+> When building for Windows on a Windows host you can sign the executable by providing a `SIGN_FILE` (File path to the .pfx file to use for signing) and `SIGN_PASSWORD` (The password to the .pdf file) you will also need to obtain a copy of signtool.exe and set the `SIGNTOOL_PATH` to be the path to that file
+>
+> After doing that Windows builds will be signed using the provided credentials
+
+#### Building just Linux
+
+```shell
+cargo make -t build-linux
+```
+
 ## 🔌 Credits
 
 This repository contains files from [https://github.com/Erik-JS/masseffect-binkw32](https://github.com/Erik-JS/masseffect-binkw32) in the /legacy directory as they were embedded in previous versions of the client in order to disable certificate verification 
