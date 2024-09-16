@@ -45,6 +45,8 @@ Guide for manually compiling the client executable from source
 - **Rust & Cargo** Rust version 1.70.0 or newer is required in order to compile the client you can install both of these using Rustup which you can install using the guide Here
 - **Git** Git is required to clone the github repository to your system. You can ignore this step if you manually download the latest source archive from github directly Here
 
+On Linux the client dynamically links to OpenSSL so you will need to ensure you have the required OpenSSL dependencies installed. You can find them [Here](https://docs.rs/openssl/latest/openssl/#automatic)
+
 ### Combined Answer
 
 If you want skip all the steps and just have a list of commands to paste in for the default setup you can paste the following command into your terminal. (This is using the bash syntax for multiple commands)
