@@ -154,6 +154,7 @@ impl Application for App {
                         http_client: self.http_client.clone(),
                         base_url: value.url.clone(),
                         association: value.association.take(),
+                        tunnel_port: value.tunnel_port,
                     });
 
                     // Start all the servers
