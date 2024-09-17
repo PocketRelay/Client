@@ -138,6 +138,7 @@ impl App {
             http_client: self.http_client.clone(),
             base_url: lookup.url.clone(),
             association: lookup.association.take(),
+            tunnel_port: lookup.tunnel_port,
         });
 
         // Start the servers
